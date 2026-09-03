@@ -1,0 +1,53 @@
+{
+  "account_id": "acc_MWWeS9Ico5tQBk",
+  "contains": [
+    "payment_link"
+  ],
+  "created_at": 1748586657,
+  "entity": "event",
+  "event": "payment_link.expired",
+  "payload": {
+    "payment_link": {
+      "entity": {
+        "accept_partial": false,
+        "amount": 100,
+        "amount_paid": 0,
+        "callback_method": "get",
+        "callback_url": "https://example-callback-url.com/",
+        "cancelled_at": 0,
+        "created_at": 1748586657,
+        "currency": "INR",
+        "customer": {
+          "contact": "+919000090000",
+          "email": "gaurav.kumar@example.com",
+          "name": "Gaurav Kumar"
+        },
+        "description": "Payment for policy no #23456",
+        "expire_by": 1748587814,
+        "expired_at": 1748587838,
+        "first_min_partial_amount": 0,
+        "id": "plink_Qb2ftTb6oRGMmu",
+        "notes": {
+          "policy_name": "Jeevan Bima"
+        },
+        "notify": {
+          "email": true,
+          "sms": true,
+          "whatsapp": false
+        },
+        "order_id": "order_Qb2g8aDXbi3yQd",
+        "reference_id": "UPItest1",
+        "reminder_enable": true,
+        "reminders": {
+          "status": "failed"
+        },
+        "short_url": "https://rzp.io/rzp/l9G3mEO",
+        "status": "expired",
+        "updated_at": 1748586671,
+        "upi_link": true,
+        "user_id": "",
+        "whatsapp_link": false
+      }
+    }
+  }
+}

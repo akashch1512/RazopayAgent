@@ -1,0 +1,32 @@
+{
+  "entity": "event",
+  "account_id": "acc_CWX291oykl9aZA",
+  "event": "payout.downtime.started",
+  "contains": [
+    "payout.downtime"
+  ],
+  "payload": {
+    "payout.downtime": {
+      "entity": {
+        "id": "poutdown_F1Zppa6lcVheSE",
+        "entity": "payout.downtime",
+        "scheduled": false,
+        "method": [
+          "IMPS"
+        ],
+        "begin": 1591935238,
+        "end": null,
+        "status": "started",
+        "source": "beneficiary",
+        "instrument": {
+          "bank": "SBI"
+        },
+        "created_at": 1591935238,
+        "updated_at": 1591935238
+      }
+    }
+  },
+  "created_at": 1591935238,
+  "_source": "Razorpay Payouts Webhook Events",
+  "_source_url": "https://razorpay.com/docs/webhooks/payouts/"
+}

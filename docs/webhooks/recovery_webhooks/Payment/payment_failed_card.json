@@ -1,0 +1,48 @@
+{
+  "entity": "event",
+  "account_id": "acc_BFQ7uQEaa7j2z7",
+  "event": "payment.failed",
+  "contains": [
+    "payment"
+  ],
+  "payload": {
+    "payment": {
+      "entity": {
+        "id": "pay_Epiw458kREjwE8",
+        "entity": "payment",
+        "amount": 10000,
+        "currency": "INR",
+        "status": "failed",
+        "order_id": "order_EpivkSy5UXJCdW",
+        "invoice_id": "inv_EpivkS3Vb7AnUD",
+        "international": false,
+        "method": "card",
+        "amount_refunded": 0,
+        "refund_status": null,
+        "captured": false,
+        "description": null,
+        "card_id": "card_EpihqypuNkmSJX",
+        "bank": null,
+        "wallet": null,
+        "vpa": null,
+        "email": "gaurav.kumar@example.com",
+        "contact": "+919876543210",
+        "notes": [],
+        "fee": null,
+        "tax": null,
+        "error_code": "BAD_REQUEST_ERROR",
+        "error_description": "Payment failed",
+        "error_source": "gateway",
+        "error_step": "payment_authorization",
+        "error_reason": "payment_failed",
+        "acquirer_data": {
+          "auth_code": null
+        },
+        "created_at": 1589347206
+      }
+    }
+  },
+  "created_at": 1589347207,
+  "_source": "Razorpay Docs - Payments Webhook Events",
+  "_source_url": "https://razorpay.com/docs/webhooks/payments/"
+}

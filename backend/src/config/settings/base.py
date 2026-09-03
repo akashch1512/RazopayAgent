@@ -85,6 +85,22 @@ class BackendBaseSettings(BaseSettings):
     HASHING_SALT: str = ""
     JWT_ALGORITHM: str = "HS256"
 
+    # Fernet key (urlsafe base64-encoded 32 bytes) used to encrypt Razorpay tokens at rest.
+    ENCRYPTION_KEY: str = ""
+
+    # Razorpay Partner OAuth application credentials.
+    RAZORPAY_CLIENT_ID: str = ""
+    RAZORPAY_CLIENT_SECRET: str = ""
+    RAZORPAY_OAUTH_REDIRECT_URI: str = "http://127.0.0.1:8000/api/onboard-business/callback"
+    RAZORPAY_OAUTH_SCOPE: str = "read_write"
+    RAZORPAY_OAUTH_MODE: str = "test"  # `test` or `live`
+    RAZORPAY_AUTH_BASE_URL: str = "https://auth.razorpay.com"
+    RAZORPAY_API_BASE_URL: str = "https://api.razorpay.com"
+    # Public URL Razorpay should call for sub-merchant webhook events.
+    RAZORPAY_WEBHOOK_URL: str = "http://127.0.0.1:8000/api/webhooks/razorpay"
+    RAZORPAY_WEBHOOK_ALERT_EMAIL: str = ""
+    HTTP_CLIENT_TIMEOUT: int = 30
+
     @property
     def set_backend_app_attributes(self) -> dict[str, str | bool | None]:
         """

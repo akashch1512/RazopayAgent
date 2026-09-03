@@ -1,0 +1,41 @@
+{
+  "account_id": "acc_BFQ7uQEaa7j2z7",
+  "entity": "event",
+  "event": "bill_payment.bill_request.failed",
+  "contains": [
+    "bill_request"
+  ],
+  "created_at": 1691735800,
+  "payload": {
+    "bill_request": {
+      "entity": {
+        "id": "billreq_ERNEungCtXpZqM",
+        "entity": "bill_payment.bill_request",
+        "status": "failed",
+        "biller_id": "rzp_blr_123",
+        "gateway_biller_id": "VODA00000MUM03",
+        "created_at": 1691735700,
+        "updated_at": 1691735800,
+        "customer": {
+          "id": "rzp_cust_123",
+          "name": "Gaurav Kumar",
+          "mobile": "919000090000",
+          "email": "gaurav.kumar@example.com"
+        },
+        "error": {
+          "code": "GATEWAY_ERROR",
+          "description": "Bill fetch failed. Customer account not found at biller.",
+          "source": "biller",
+          "step": "bill_request",
+          "reason": "customer_not_found",
+          "metadata": {
+            "bill_request_id": "billreq_ERNEungCtXpZqM",
+            "payment_id": "rzp_paymentid",
+            "gateway_error_code": "BRR005",
+            "gateway_error_description": "customer account not found at biller"
+          }
+        }
+      }
+    }
+  }
+}

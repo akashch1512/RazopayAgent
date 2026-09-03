@@ -1,0 +1,83 @@
+{
+  "account_id": "acc_BFQ7uQEaa7j2z7",
+  "entity": "event",
+  "event": "bill_payment.payment.failed",
+  "contains": [
+    "bill_payment"
+  ],
+  "created_at": 1691735900,
+  "payload": {
+    "bill_payment": {
+      "entity": {
+        "id": "bill_pay_ERNEungCtXpZqM",
+        "entity": "bill_payment.payment",
+        "status": "failed",
+        "biller_id": "rzp_blr_123",
+        "gateway_biller_id": "VODA00000MUM03",
+        "gateway": "bbps",
+        "gateway_transaction_id": "BBPS0012345678901234",
+        "created_at": 1691735820,
+        "updated_at": 1691735900,
+        "bill_pay_amount": 120000,
+        "currency": "INR",
+        "fees": {
+          "app_convenience_fee": 1000,
+          "biller_convenience_fee": 500
+        },
+        "customer": {
+          "id": "rzp_cust_123",
+          "name": "Gaurav Kumar",
+          "mobile": "919000090000",
+          "email": "gaurav.kumar@example.com"
+        },
+        "payment": [
+          {
+            "id": "rzp_pay_1234",
+            "status": "authorized",
+            "provider": "razorpay",
+            "amount": 72000,
+            "currency": "INR",
+            "method": "card"
+          },
+          {
+            "id": "rzp_pay_5678",
+            "status": "authorized",
+            "provider": "razorpay",
+            "amount": 48000,
+            "currency": "INR",
+            "method": "upi"
+          }
+        ],
+        "account_holder": {
+          "account_number": "XXXXXXX"
+        },
+        "bills": [
+          {
+            "bill_number": "12345",
+            "amount": 120000,
+            "currency": "INR",
+            "bill_date": 1688169600,
+            "due_date": 1690848000,
+            "bill_period": "monthly"
+          }
+        ],
+        "error": {
+          "code": "GATEWAY_ERROR",
+          "description": "Bill payment failed. Biller is not accepting payments at the moment.",
+          "source": "biller",
+          "step": "bill_payment",
+          "reason": "biller_not_accepting_payments",
+          "metadata": {
+            "bill_payment_id": "bill_pay_ERNEungCtXpZqM",
+            "payment_ids": [
+              "rzp_pay_1234",
+              "rzp_pay_5678"
+            ],
+            "gateway_error_code": "BRR005",
+            "gateway_error_description": "biller is not accepting payments at the moment"
+          }
+        }
+      }
+    }
+  }
+}

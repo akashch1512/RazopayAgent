@@ -1,0 +1,34 @@
+{
+  "entity": "event",
+  "account_id": "acc_CWX291oykl9aZA",
+  "event": "payment.downtime.resolved",
+  "contains": [
+    "payment.downtime"
+  ],
+  "payload": {
+    "payment.downtime": {
+      "entity": {
+        "id": "down_F1Zppa05re",
+        "entity": "payment.downtime",
+        "method": "upi",
+        "begin": 1591935243,
+        "end": 1591936243,
+        "status": "resolved",
+        "scheduled": false,
+        "severity": "medium",
+        "instrument": {
+          "psp": "example_psp"
+        },
+        "instrument_schema": [
+          "psp"
+        ],
+        "created_at": 1591935243,
+        "updated_at": 1591936243
+      }
+    }
+  },
+  "created_at": 1591936243,
+  "_source": "Razorpay Payments Webhook Events",
+  "_source_url": "https://razorpay.com/docs/webhooks/payments/",
+  "_target": "upi_psp"
+}

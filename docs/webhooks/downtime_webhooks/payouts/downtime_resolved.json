@@ -1,0 +1,27 @@
+{
+  "entity": "event",
+  "event": "payout.downtime.resolved",
+  "payload": {
+    "payout.downtime": {
+      "entity": {
+        "begin": 1610430729,
+        "created_at": 1610430729,
+        "end": 1610431729,
+        "entity": "payout.downtime",
+        "id": "poutdown_GOHp6DSA5odXTu",
+        "instrument": {
+          "bank": "UTIB"
+        },
+        "method": [
+          "IMPS"
+        ],
+        "scheduled": false,
+        "source": "BENEFICIARY",
+        "status": "resolved",
+        "updated_at": 1610430729
+      }
+    }
+  },
+  "_source": "Razorpay Payouts Webhook Events",
+  "_source_url": "https://razorpay.com/docs/webhooks/payouts/"
+}

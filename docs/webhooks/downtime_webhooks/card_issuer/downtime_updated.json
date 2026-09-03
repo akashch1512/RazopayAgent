@@ -1,0 +1,36 @@
+{
+  "entity": "event",
+  "account_id": "acc_CWX291oykl9aZA",
+  "event": "payment.downtime.updated",
+  "contains": [
+    "payment.downtime"
+  ],
+  "payload": {
+    "payment.downtime": {
+      "entity": {
+        "id": "down_F1Zppa02up",
+        "entity": "payment.downtime",
+        "method": "card",
+        "begin": 1591935240,
+        "end": null,
+        "status": "updated",
+        "scheduled": false,
+        "severity": "high",
+        "instrument": {
+          "issuer": "SBIN",
+          "type": "credit"
+        },
+        "instrument_schema": [
+          "issuer",
+          "type"
+        ],
+        "created_at": 1591935240,
+        "updated_at": 1591936240
+      }
+    }
+  },
+  "created_at": 1591936240,
+  "_source": "Razorpay Payments Webhook Events",
+  "_source_url": "https://razorpay.com/docs/webhooks/payments/",
+  "_target": "card_issuer"
+}

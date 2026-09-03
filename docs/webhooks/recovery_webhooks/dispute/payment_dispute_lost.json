@@ -1,0 +1,39 @@
+{
+  "entity": "event",
+  "account_id": "acc_CFvOKjkTwf3GQy",
+  "event": "payment.dispute.lost",
+  "contains": [
+    "payment",
+    "dispute"
+  ],
+  "payload": {
+    "payment": {
+      "entity": {
+        "id": "pay_EFtmUsbwpXwBHI",
+        "entity": "payment",
+        "amount": 5297600,
+        "currency": "INR",
+        "base_amount": 5297600,
+        "status": "captured",
+        "order_id": "order_EFtkA6f5jdkfud",
+        "invoice_id": null,
+        "international": false,
+        "method": "card",
+        "amount_refunded": 700000,
+        "amount_transferred": 0,
+        "refund_status": "partial",
+        "captured": true,
+        "description": null,
+        "card_id": "card_EADblPSDnnk5ZG"
+      }
+    },
+    "dispute": {
+      "entity": {
+        "status": "lost"
+      }
+    }
+  },
+  "created_at": 1589907977,
+  "_source": "Razorpay Docs - Disputes Webhook Events",
+  "_source_url": "https://razorpay.com/docs/webhooks/disputes/"
+}
