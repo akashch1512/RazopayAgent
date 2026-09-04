@@ -99,6 +99,12 @@ class BackendBaseSettings(BaseSettings):
     # Public URL Razorpay should call for sub-merchant webhook events.
     RAZORPAY_WEBHOOK_URL: str = "http://127.0.0.1:8000/api/webhooks/razorpay"
     RAZORPAY_WEBHOOK_ALERT_EMAIL: str = ""
+    # Optional shared secret, used to verify deliveries when the owning business
+    # (and thus its per-account secret) cannot be resolved. Leave empty to skip.
+    RAZORPAY_WEBHOOK_SECRET: str = ""
+    # When true, deliveries that fail signature verification are rejected (401)
+    # instead of being stored with `signature_verified = false`.
+    RAZORPAY_WEBHOOK_REJECT_UNVERIFIED: bool = False
     HTTP_CLIENT_TIMEOUT: int = 30
 
     @property

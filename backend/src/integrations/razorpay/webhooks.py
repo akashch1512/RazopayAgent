@@ -1,3 +1,5 @@
+import hashlib
+import hmac
 import secrets
 
 import httpx
@@ -22,6 +24,18 @@ class RazorpayWebhookClient:
     @staticmethod
     def generate_secret() -> str:
         return secrets.token_urlsafe(32)
+
+    @staticmethod
+    def verify_signature(*, raw_body: bytes, signature: str | None, secret: str) -> bool:
+        """
+        Validate the `X-Razorpay-Signature` header: it is the hex HMAC-SHA256 of
+        the raw request body keyed with the webhook secret.
+        Docs: https://razorpay.com/docs/webhooks/validate-test/
+        """
+        if not signature or not secret:
+            return False
+        expected = hmac.new(secret.encode("utf-8"), raw_body, hashlib.sha256).hexdigest()
+        return hmac.compare_digest(expected, signature)
 
     async def create_webhook(
         self,

@@ -7,19 +7,14 @@ replace / extend this list with the final set of events you want to listen to.
 See: https://razorpay.com/docs/webhooks/supported-events/
 """
 
-# TODO: replace these dummy triggers with the real event list.
 WEBHOOK_EVENTS: list[str] = [
-    "bill_payment.bill_request.failed",
-    "bill_payment.payment.failed",
     "payment.dispute.lost",
     "payment_link.expired",
-    "payout.rejected",
-    "payout.failed",
     "invoice.expired",
-    "subscription.paused",
-    "subscription.cancelled",
-    "subscription.pending",
-    "subscription.halted",
+    "subscription.paused", 
+    "subscription.cancelled", 
+    "subscription.pending", 
+    "subscription.halted", 
     "payment.failed",
 ]
 
