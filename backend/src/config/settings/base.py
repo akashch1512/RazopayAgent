@@ -107,6 +107,49 @@ class BackendBaseSettings(BaseSettings):
     RAZORPAY_WEBHOOK_REJECT_UNVERIFIED: bool = False
     HTTP_CLIENT_TIMEOUT: int = 30
 
+    # --- Redis (Celery broker) ---
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
+    REDIS_DB: int = 0
+    REDIS_PASSWORD: str | None = None
+
+    # --- Celery / task queue ---
+    CELERY_BROKER_URL_OVERRIDE: str | None = None
+    CELERY_RESULT_BACKEND: str | None = None
+    # Run tasks inline (no broker/worker) - only for tests / local debugging.
+    CELERY_TASK_ALWAYS_EAGER: bool = False
+
+    # Dedicated queue the agent worker drains one message at a time.
+    WEBHOOK_QUEUE_NAME: str = "webhook_agent"
+    # Priority band handed to Redis: 0 = most urgent .. 9 = least urgent.
+    WEBHOOK_PRIORITY_STEPS: int = 10
+    # How many times a single case may be attempted before it is parked DEAD.
+    WEBHOOK_MAX_PROCESSING_ATTEMPTS: int = 5
+    WEBHOOK_RETRY_BASE_DELAY_SECONDS: int = 5
+    WEBHOOK_RETRY_MAX_DELAY_SECONDS: int = 600
+    # A QUEUED/PROCESSING row untouched for this long is treated as lost and re-dispatched.
+    WEBHOOK_STUCK_AFTER_SECONDS: int = 900
+    # How often the reconciler sweeps for starved / lost / retryable cases.
+    WEBHOOK_RECONCILE_INTERVAL_SECONDS: int = 60
+    WEBHOOK_RECONCILE_BATCH_SIZE: int = 500
+    # Every this many seconds a case waits, its effective priority improves by 1
+    # (prevents low-priority cases from starving forever behind a busy queue).
+    WEBHOOK_PRIORITY_AGING_STEP_SECONDS: int = 120
+    # Bounded, fast retry for the hot-path DB write before returning 503 to Razorpay.
+    WEBHOOK_DB_WRITE_MAX_RETRIES: int = 3
+    # How many merged webhook_event rows the agent gets as history for one case.
+    RECOVERY_CASE_HISTORY_LIMIT: int = 50
+    # Guardrails around the (future) agent run inside the worker.
+    WEBHOOK_TASK_SOFT_TIME_LIMIT_SECONDS: int = 240
+    WEBHOOK_TASK_TIME_LIMIT_SECONDS: int = 300
+
+    @property
+    def CELERY_BROKER_URL(self) -> str:
+        if self.CELERY_BROKER_URL_OVERRIDE:
+            return self.CELERY_BROKER_URL_OVERRIDE
+        auth = f":{self.REDIS_PASSWORD}@" if self.REDIS_PASSWORD else ""
+        return f"redis://{auth}{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
+
     @property
     def set_backend_app_attributes(self) -> dict[str, str | bool | None]:
         """

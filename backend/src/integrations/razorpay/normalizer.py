@@ -60,7 +60,21 @@ def normalize_event(
         "entity_type": entity_type,
         "entity_id": entity.get("id"),
         "entity_status": entity.get("status"),
+        # Present on payment/invoice-shaped entities; the single strongest signal
+        # that two deliveries are "the same case" (a customer retrying one order).
+        "order_id": entity.get("order_id"),
+        "customer_email": entity.get("email") or _dig(entity, "customer_details", "email"),
+        "customer_contact": entity.get("contact") or _dig(entity, "customer_details", "contact"),
         "signature_verified": signature_verified,
         "payload": body,
         "event_created_at": _epoch_to_dt(body.get("created_at")),
     }
+
+
+def _dig(entity: dict[str, typing.Any], *path: str) -> str | None:
+    node: typing.Any = entity
+    for key in path:
+        if not isinstance(node, dict):
+            return None
+        node = node.get(key)
+    return node if isinstance(node, str) else None

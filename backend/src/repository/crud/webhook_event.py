@@ -39,16 +39,30 @@ class WebhookEventCRUDRepository(BaseCRUDRepository):
         _ACCOUNT_CACHE[account_id] = (row.id, secret, time.monotonic() + _ACCOUNT_CACHE_TTL_SECONDS)
         return row.id, secret
 
-    async def store_event(self, *, values: dict[str, typing.Any]) -> bool:
+    async def store_event(self, *, values: dict[str, typing.Any]) -> WebhookEvent | None:
         """
-        Insert one normalized event. Returns `True` if a new row was written,
-        `False` if it was a duplicate delivery (idempotent via `dedupe_key`).
+        Insert one delivery (already tagged with its `case_id`). Returns the new
+        row, or `None` when this was a duplicate delivery (idempotent via
+        `dedupe_key`).
         """
         stmt = (
             pg_insert(WebhookEvent)
             .values(**values)
             .on_conflict_do_nothing(index_elements=["dedupe_key"])
+            .returning(WebhookEvent)
         )
-        result = await self.async_session.execute(stmt)
+        row = (await self.async_session.execute(stmt)).scalar_one_or_none()
         await self.async_session.commit()
-        return bool(result.rowcount)
+        return row
+
+    async def list_case_history(
+        self, *, case_id: int, limit: int = 50
+    ) -> typing.Sequence[WebhookEvent]:
+        """Every delivery merged into `case_id`, oldest first - the agent's context."""
+        stmt = (
+            sqlalchemy.select(WebhookEvent)
+            .where(WebhookEvent.case_id == case_id)
+            .order_by(WebhookEvent.received_at.asc())
+            .limit(limit)
+        )
+        return (await self.async_session.execute(stmt)).scalars().all()
