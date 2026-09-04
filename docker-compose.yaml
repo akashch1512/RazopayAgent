@@ -34,13 +34,28 @@ services:
     depends_on:
       - db
 
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: always
+    command: ["redis-server", "--save", "60", "1", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    expose:
+      - 6379
+    ports:
+      - 6380:6379
+
   backend_app:
     container_name: backend_app
     restart: always
     build:
       dockerfile: Dockerfile
       context: ./backend/
+    env_file:
+      - .env
     environment:
+      - REDIS_HOST=redis
       - ENVIRONMENT=${ENVIRONMENT}
       - DEBUG=${DEBUG}
       - POSTGRES_DB=${POSTGRES_DB}
@@ -80,6 +95,58 @@ services:
       - 8001:8000
     depends_on:
       - db
+      - redis
+
+  # Agent worker: drains the priority queue ONE case at a time (sequential).
+  celery_worker:
+    container_name: celery_worker
+    restart: always
+    build:
+      dockerfile: Dockerfile
+      context: ./backend/
+    env_file:
+      - .env
+    environment:
+      - REDIS_HOST=redis
+    volumes:
+      - ./backend/:/usr/backend/
+    entrypoint: []
+    command:
+      - celery
+      - -A
+      - src.workers.celery_app.celery_app
+      - worker
+      - --queues=webhook_agent
+      - --concurrency=1
+      - --prefetch-multiplier=1
+      - --loglevel=info
+    depends_on:
+      - db
+      - redis
+
+  # Beat: fires the reconciler (anti-starvation + lost-message recovery).
+  celery_beat:
+    container_name: celery_beat
+    restart: always
+    build:
+      dockerfile: Dockerfile
+      context: ./backend/
+    env_file:
+      - .env
+    environment:
+      - REDIS_HOST=redis
+    volumes:
+      - ./backend/:/usr/backend/
+    entrypoint: []
+    command:
+      - celery
+      - -A
+      - src.workers.celery_app.celery_app
+      - beat
+      - --loglevel=info
+    depends_on:
+      - redis
 
 volumes:
   postgresql_db_data:
+  redis_data:

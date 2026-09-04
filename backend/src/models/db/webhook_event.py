@@ -11,13 +11,13 @@ from src.repository.table import Base
 
 class WebhookEvent(Base):  # type: ignore
     """
-    A single Razorpay webhook delivery, normalized into a shape that is uniform
-    across every event type (payments, payouts, subscriptions, invoices,
-    disputes, payment links, bill payments, ...).
+    One Razorpay webhook delivery, verbatim history.
 
-    The full verbatim event is kept in `payload` (JSONB) for the agent to mine;
-    the flat columns are extracted for cheap filtering / indexing / context
-    windows.
+    Dispatch, priority and retries all live on `RecoveryCase` - this table is an
+    append-only log: every delivery is stored (and merged into a case via
+    `case_id`), but only the *case* is ever handed to the agent worker. A
+    customer retrying a failing payment five times yields five rows here and
+    one `recovery_case`.
     """
 
     __tablename__ = "webhook_event"
@@ -41,6 +41,11 @@ class WebhookEvent(Base):  # type: ignore
         sqlalchemy.String(length=64), nullable=True, index=True
     )
 
+    # The merged case this delivery belongs to. See `RecoveryCase`.
+    case_id: SQLAlchemyMapped[int | None] = sqlalchemy_mapped_column(
+        sqlalchemy.ForeignKey("recovery_case.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+
     # e.g. "payment.failed", "subscription.halted", "payout.rejected".
     event_type: SQLAlchemyMapped[str] = sqlalchemy_mapped_column(
         sqlalchemy.String(length=100), nullable=False, index=True
@@ -57,15 +62,13 @@ class WebhookEvent(Base):  # type: ignore
     entity_status: SQLAlchemyMapped[str | None] = sqlalchemy_mapped_column(
         sqlalchemy.String(length=50), nullable=True
     )
+    # Present on payment/invoice-shaped entities - the grouping signal for cases.
+    order_id: SQLAlchemyMapped[str | None] = sqlalchemy_mapped_column(
+        sqlalchemy.String(length=64), nullable=True, index=True
+    )
 
     signature_verified: SQLAlchemyMapped[bool] = sqlalchemy_mapped_column(
         sqlalchemy.Boolean, nullable=False, server_default=sqlalchemy.sql.expression.false()
-    )
-
-    # Downstream processing state (consumed later by the LangGraph agent).
-    # RECEIVED -> PROCESSED / FAILED
-    processing_status: SQLAlchemyMapped[str] = sqlalchemy_mapped_column(
-        sqlalchemy.String(length=20), nullable=False, server_default="RECEIVED", index=True
     )
 
     payload: SQLAlchemyMapped[dict] = sqlalchemy_mapped_column(JSONB, nullable=False)
@@ -76,9 +79,6 @@ class WebhookEvent(Base):  # type: ignore
     )
     received_at: SQLAlchemyMapped[datetime.datetime] = sqlalchemy_mapped_column(
         sqlalchemy.DateTime(timezone=True), nullable=False, server_default=sqlalchemy_functions.now()
-    )
-    processed_at: SQLAlchemyMapped[datetime.datetime | None] = sqlalchemy_mapped_column(
-        sqlalchemy.DateTime(timezone=True), nullable=True
     )
 
     __mapper_args__ = {"eager_defaults": True}
