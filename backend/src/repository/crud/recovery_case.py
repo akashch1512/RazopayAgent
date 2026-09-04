@@ -11,6 +11,7 @@ from src.models.db.recovery_case import (
     RecoveryCaseStatus,
 )
 from src.repository.crud.base import BaseCRUDRepository
+from src.utilities.exceptions.database import EntityDoesNotExist
 
 
 def _utcnow() -> datetime.datetime:
@@ -105,6 +106,74 @@ class RecoveryCaseCRUDRepository(BaseCRUDRepository):
         row = (await self.async_session.execute(stmt)).scalar_one()
         await self.async_session.commit()
         return row, row.event_count == 1
+
+    # ------------------------------------------------------------------ #
+    # Reads - exposed to the outside world via the recovery-cases API.   #
+    # ------------------------------------------------------------------ #
+
+    async def read_case_by_id(self, *, case_id: int) -> RecoveryCase:
+        stmt = sqlalchemy.select(RecoveryCase).where(RecoveryCase.id == case_id)
+        case = (await self.async_session.execute(stmt)).scalar_one_or_none()
+        if case is None:
+            raise EntityDoesNotExist(f"Recovery case with id `{case_id}` does not exist!")
+        return case
+
+    async def list_cases_by_business(
+        self, *, business_id: int, limit: int = 50, offset: int = 0
+    ) -> typing.Sequence[RecoveryCase]:
+        """Most recently active case first - what a support/ops view wants."""
+        return await self.list_cases(business_id=business_id, limit=limit, offset=offset)
+
+    async def list_cases(
+        self,
+        *,
+        business_id: int | None = None,
+        status: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> typing.Sequence[RecoveryCase]:
+        """
+        General-purpose case listing (an ops/support dashboard's main query):
+        optionally scoped to one business and/or one `RecoveryCaseStatus`, most
+        recently active first.
+        """
+        stmt = sqlalchemy.select(RecoveryCase)
+        if business_id is not None:
+            stmt = stmt.where(RecoveryCase.business_id == business_id)
+        if status is not None:
+            stmt = stmt.where(RecoveryCase.processing_status == status)
+        stmt = stmt.order_by(RecoveryCase.last_event_at.desc()).limit(limit).offset(offset)
+        return (await self.async_session.execute(stmt)).scalars().all()
+
+    async def reset_case_for_retry(self, *, case_id: int) -> RecoveryCase:
+        """
+        Manually reopen a `DEAD` or `FAILED` case for another attempt - clears the
+        attempt counter and last error. The caller is still responsible for
+        enqueueing it (mirrors the route's own dispatch step).
+        """
+        stmt = (
+            sqlalchemy.update(RecoveryCase)
+            .where(
+                RecoveryCase.id == case_id,
+                RecoveryCase.processing_status.in_(
+                    (RecoveryCaseStatus.DEAD.value, RecoveryCaseStatus.FAILED.value)
+                ),
+            )
+            .values(
+                processing_status=RecoveryCaseStatus.RECEIVED.value,
+                processing_attempts=0,
+                last_error=None,
+                next_visible_at=None,
+            )
+            .returning(RecoveryCase)
+        )
+        row = (await self.async_session.execute(stmt)).scalar_one_or_none()
+        await self.async_session.commit()
+        if row is None:
+            raise EntityDoesNotExist(
+                f"Recovery case with id `{case_id}` does not exist, or is not DEAD/FAILED!"
+            )
+        return row
 
     @staticmethod
     def needs_dispatch(case: RecoveryCase, *, is_resolving: bool) -> bool:

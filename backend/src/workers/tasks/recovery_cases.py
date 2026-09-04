@@ -1,12 +1,13 @@
 """
 The consumer side: drain one merged recovery case from the priority queue and
-(soon) hand it, with its full retry history, to the LangGraph agent.
+hand it, with its full retry history, to the LangGraph recovery agent.
 
-Sequential processing is enforced at deploy time - this task's queue is drained
-by a worker started with ``--concurrency=1 --prefetch-multiplier=1``. Because
-dispatch happens at the *case* level (see `src.repository.crud.recovery_case`
-and the route's `_dispatch_if_needed`), the agent is invoked once per problem
-no matter how many times the customer retried, not once per webhook delivery.
+Cases are dispatched independently by `case_id`, so any number of workers can
+process *different* cases in parallel - `claim_for_processing`'s atomic
+`UPDATE ... WHERE processing_status IN (...)` is what stops two workers from
+double-processing the *same* case, not a `--concurrency=1` restriction. Scale
+the number of parallel workers with `celery worker --concurrency=N` (see
+`CELERY_WORKER_CONCURRENCY` in docker-compose / `.env`).
 """
 
 import datetime
@@ -14,11 +15,13 @@ import datetime
 import loguru
 from celery.exceptions import SoftTimeLimitExceeded
 
+from src.agent.runner import run_recovery_agent
 from src.config.manager import settings
-from src.models.db.recovery_case import RecoveryCase
-from src.models.db.webhook_event import WebhookEvent
+from src.models.db.business import Business
+from src.repository.crud.business import BusinessCRUDRepository
 from src.repository.crud.recovery_case import RecoveryCaseCRUDRepository
 from src.repository.crud.webhook_event import WebhookEventCRUDRepository
+from src.utilities.exceptions.database import EntityDoesNotExist
 from src.workers import names
 from src.workers.celery_app import celery_app
 from src.workers.runtime import run_async, worker_session
@@ -29,29 +32,27 @@ def _utcnow() -> datetime.datetime:
     return datetime.datetime.now(tz=datetime.UTC)
 
 
-async def _run_agent(case: RecoveryCase, history: list[WebhookEvent]) -> None:
+async def _load_business(business_id: int | None, *, business_repo: BusinessCRUDRepository) -> Business:
     """
-    TODO(agent): this is the only seam the LangGraph agent plugs into. It will
-    receive the case (current status, priority, customer contact, retry count)
-    plus its full delivery history - already merged and deduplicated, so it
-    never has to reason about the same failed payment N separate times - and
-    decide the recovery action.
+    A best-effort `Business` for context/MCP purposes. Most cases resolve one
+    (via `account_id` at ingest time); for the rare one that doesn't, a
+    transient, never-persisted stand-in keeps the agent's context builder and
+    MCP tool loader from needing a separate "no business" code path.
+    """
+    if business_id is not None:
+        try:
+            return await business_repo.read_business_by_id(business_id=business_id)
+        except EntityDoesNotExist:
+            loguru.logger.warning(f"business_id={business_id} referenced by a case no longer exists")
 
-    Until that exists we simply acknowledge the case so the whole
-    route -> merge -> queue -> worker -> DB pipeline can be exercised end to end.
-    """
-    loguru.logger.info(
-        f"[agent-stub] recovery_case id={case.id} key={case.case_key} "
-        f"latest={case.latest_event_type}/{case.latest_entity_status} "
-        f"retries={case.event_count} priority={case.priority} "
-        f"history_len={len(history)} attempt={case.processing_attempts}"
-    )
+    return Business(name="Unknown Business", reference_id="unresolved")
 
 
 async def _process(task: DBTask, case_id: int) -> dict[str, object]:
     async with worker_session() as session:
         case_repo = RecoveryCaseCRUDRepository(async_session=session)
         event_repo = WebhookEventCRUDRepository(async_session=session)
+        business_repo = BusinessCRUDRepository(async_session=session)
 
         case = await case_repo.claim_for_processing(
             case_id=case_id, max_attempts=settings.WEBHOOK_MAX_PROCESSING_ATTEMPTS
@@ -64,9 +65,10 @@ async def _process(task: DBTask, case_id: int) -> dict[str, object]:
         history = await event_repo.list_case_history(
             case_id=case_id, limit=settings.RECOVERY_CASE_HISTORY_LIMIT
         )
+        business = await _load_business(case.business_id, business_repo=business_repo)
 
         try:
-            await _run_agent(case, list(history))
+            agent_result = await run_recovery_agent(case=case, history=list(history), business=business)
         except SoftTimeLimitExceeded:
             await case_repo.mark_failed(
                 case_id=case_id,
@@ -94,7 +96,7 @@ async def _process(task: DBTask, case_id: int) -> dict[str, object]:
             raise task.retry(exc=exc, countdown=delay) from exc
 
         await case_repo.mark_processed(case_id=case_id)
-        return {"case_id": case_id, "status": "processed", "merged_events": len(history)}
+        return {"case_id": case_id, "status": "processed", "merged_events": len(history), **agent_result}
 
 
 @celery_app.task(

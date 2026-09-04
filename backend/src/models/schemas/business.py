@@ -39,6 +39,18 @@ class BusinessResponse(BaseSchemaModel):
     updated_at: datetime.datetime | None
 
 
+class WebhookConfigResponse(pydantic.BaseModel):
+    """The live config of a business' registered Razorpay webhook (not cached)."""
+
+    id: str
+    url: str
+    active: bool
+    events: list[str]
+    alert_email: str | None = None
+    secret_exists: bool | None = None
+    created_at: int | None = None
+
+
 class RazorpayTokenResponse(pydantic.BaseModel):
     """Shape of the Razorpay `POST /token` response."""
 

@@ -1,16 +1,20 @@
 """
 The shared Celery application.
 
-Design choices (all aimed at "the agent processes one case at a time, in
-priority order, and nothing is silently lost"):
+Design choices (all aimed at "every case gets processed by exactly one worker,
+in priority order, and nothing is silently lost - however many workers we run"):
 
 * **Redis broker with priority.** `priority_steps` + `sep` make Kombu fan the
   queue into per-priority lists; `send_task(priority=N)` then picks the band.
   0 = most urgent.
 * **`acks_late` + `reject_on_worker_lost` + `prefetch_multiplier=1`.** A message
-  is only acked after the task returns, at most one is held at a time, and a
-  crash re-queues it. Combined with `--concurrency=1` on the agent worker this
-  gives strict sequential, at-least-once processing.
+  is only acked after the task returns, and a crash re-queues it instead of
+  losing it. Each worker process only ever holds one unacked message at a time
+  (no head-of-line blocking from prefetching a batch), so scaling throughput is
+  just `celery worker --concurrency=N` - see `CELERY_WORKER_CONCURRENCY` in
+  docker-compose / `.env`. Safety against *double*-processing the same case
+  comes from `RecoveryCaseCRUDRepository.claim_for_processing`'s atomic
+  conditional UPDATE, not from limiting concurrency.
 * **Results ignored by default.** The `recovery_case` row is the source of
   truth; we don't need a result backend unless one is explicitly configured.
 * **Beat runs the reconciler** which is what actually prevents starvation and

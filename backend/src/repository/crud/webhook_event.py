@@ -8,6 +8,7 @@ from src.models.db.business import Business
 from src.models.db.webhook_event import WebhookEvent
 from src.repository.crud.base import BaseCRUDRepository
 from src.securities.encryption.encryptor import get_data_encryptor
+from src.utilities.exceptions.database import EntityDoesNotExist
 
 # Process-local cache: razorpay_account_id -> (business_id, webhook_secret, expiry).
 # All businesses' webhooks point at the same endpoint, so this lookup is the
@@ -54,6 +55,14 @@ class WebhookEventCRUDRepository(BaseCRUDRepository):
         row = (await self.async_session.execute(stmt)).scalar_one_or_none()
         await self.async_session.commit()
         return row
+
+    async def read_event_by_id(self, *, event_id: int) -> WebhookEvent:
+        """One raw delivery - for debugging a specific webhook payload."""
+        stmt = sqlalchemy.select(WebhookEvent).where(WebhookEvent.id == event_id)
+        event = (await self.async_session.execute(stmt)).scalar_one_or_none()
+        if event is None:
+            raise EntityDoesNotExist(f"Webhook event with id `{event_id}` does not exist!")
+        return event
 
     async def list_case_history(
         self, *, case_id: int, limit: int = 50

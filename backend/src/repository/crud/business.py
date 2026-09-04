@@ -49,8 +49,8 @@ class BusinessCRUDRepository(BaseCRUDRepository):
             raise EntityDoesNotExist("No onboarding session matches the provided `state`!")
         return business
 
-    async def read_businesses(self) -> typing.Sequence[Business]:
-        stmt = sqlalchemy.select(Business).order_by(Business.id)
+    async def read_businesses(self, *, limit: int = 50, offset: int = 0) -> typing.Sequence[Business]:
+        stmt = sqlalchemy.select(Business).order_by(Business.id).limit(limit).offset(offset)
         return (await self.async_session.execute(stmt)).scalars().all()
 
     async def store_oauth_tokens(
