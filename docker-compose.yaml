@@ -97,7 +97,9 @@ services:
       - db
       - redis
 
-  # Agent worker: drains the priority queue ONE case at a time (sequential).
+  # Agent worker: drains the priority queue by case_id. Each case is claimed by
+  # exactly one worker (see `claim_for_processing`), so this scales safely
+  # across parallel workers - set CELERY_WORKER_CONCURRENCY in .env (default 4).
   celery_worker:
     container_name: celery_worker
     restart: always
@@ -117,7 +119,7 @@ services:
       - src.workers.celery_app.celery_app
       - worker
       - --queues=webhook_agent
-      - --concurrency=1
+      - --concurrency=${CELERY_WORKER_CONCURRENCY:-4}
       - --prefetch-multiplier=1
       - --loglevel=info
     depends_on:

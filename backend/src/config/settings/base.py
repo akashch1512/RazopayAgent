@@ -139,7 +139,7 @@ class BackendBaseSettings(BaseSettings):
     WEBHOOK_DB_WRITE_MAX_RETRIES: int = 3
     # How many merged webhook_event rows the agent gets as history for one case.
     RECOVERY_CASE_HISTORY_LIMIT: int = 50
-    # Guardrails around the (future) agent run inside the worker.
+    # Guardrails around the agent run inside the worker.
     WEBHOOK_TASK_SOFT_TIME_LIMIT_SECONDS: int = 240
     WEBHOOK_TASK_TIME_LIMIT_SECONDS: int = 300
 
@@ -149,6 +149,39 @@ class BackendBaseSettings(BaseSettings):
             return self.CELERY_BROKER_URL_OVERRIDE
         auth = f":{self.REDIS_PASSWORD}@" if self.REDIS_PASSWORD else ""
         return f"redis://{auth}{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
+
+    # --- LangGraph recovery agent ---
+    OPENAI_API_KEY: str | None = None
+    AGENT_LLM_MODEL: str = "gpt-4o-mini"
+    AGENT_LLM_TEMPERATURE: float = 0.2
+    AGENT_LLM_TIMEOUT_SECONDS: int = 60
+    # Used when a customer's phone number carries no recognisable dial code.
+    DEFAULT_CUSTOMER_TIMEZONE: str = "UTC"
+
+    # Demo stand-in for the outreach tools (call/SMS/WhatsApp/email/push) - see
+    # /simulation-api. Records the action and serves it to `frontend-demo`
+    # instead of hitting a real (paid) provider.
+    SIMULATION_API_BASE_URL: str = "http://localhost:8001/api/v1"
+    SIMULATION_API_TIMEOUT_SECONDS: int = 10
+
+    # Razorpay MCP server - https://razorpay.com/docs/mcp-server/
+    RAZORPAY_MCP_SERVER_URL: str = "https://mcp.razorpay.com/mcp"
+    RAZORPAY_MCP_TRANSPORT: str = "streamable_http"
+    # DEMO FALLBACK ONLY: Razorpay's legacy Key ID / Key Secret pair (from the
+    # dashboard), used to authenticate the MCP session when a business has no
+    # OAuth access token yet, so the agent can be exercised end-to-end before
+    # onboarding completes. Never rely on this in production - every business
+    # should authenticate the MCP session with its own onboarded OAuth token.
+    RAZORPAY_KEY_ID: str | None = None
+    RAZORPAY_KEY_SECRET: str | None = None
+
+    @property
+    def CHECKPOINTER_DATABASE_URL(self) -> str:
+        """Plain `postgresql://` DSN for psycopg (`DATABASE_URL` uses the `+asyncpg` driver)."""
+        return (
+            f"postgresql://{self.DB_POSTGRES_USERNAME}:{self.DB_POSTGRES_PASSWORD}@"
+            f"{self.DB_POSTGRES_HOST}:{self.DB_POSTGRES_PORT}/{self.DB_POSTGRES_NAME}"
+        )
 
     @property
     def set_backend_app_attributes(self) -> dict[str, str | bool | None]:

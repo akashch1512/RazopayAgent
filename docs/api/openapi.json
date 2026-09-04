@@ -1,0 +1,1424 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Razopay Agent API",
+    "description": "Development Environment.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Health Check",
+        "operationId": "health_check_api_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Check Api Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/onboard-business/": {
+      "post": {
+        "tags": [
+          "onboarding"
+        ],
+        "summary": "Onboarding:Initiate",
+        "description": "Step 1 of onboarding.\n\nRegisters a `PENDING` business row and returns the Razorpay `authorization_url`.\nRedirect the business owner there; Razorpay calls back to `/onboard-business/callback`.",
+        "operationId": "onboarding_initiate_api_onboard_business__post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BusinessOnboardRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessOnboardInitResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "onboarding"
+        ],
+        "summary": "Onboarding:List",
+        "operationId": "onboarding_list_api_onboard_business__get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BusinessResponse"
+                  },
+                  "title": "Response Onboarding List Api Onboard Business  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/onboard-business/callback": {
+      "get": {
+        "tags": [
+          "onboarding"
+        ],
+        "summary": "Onboarding:Callback",
+        "description": "Step 2 of onboarding (Razorpay OAuth redirect target).\n\nExchanges `code` for tokens, stores them encrypted, then creates the\nsub-merchant webhook for the configured event triggers.",
+        "operationId": "onboarding_callback_api_onboard_business_callback_get",
+        "parameters": [
+          {
+            "name": "state",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "State"
+            }
+          },
+          {
+            "name": "code",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Code"
+            }
+          },
+          {
+            "name": "error",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Error"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/onboard-business/{business_id}": {
+      "get": {
+        "tags": [
+          "onboarding"
+        ],
+        "summary": "Onboarding:Get-By-Id",
+        "operationId": "onboarding_get_by_id_api_onboard_business__business_id__get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/onboard-business/{business_id}/recovery-cases": {
+      "get": {
+        "tags": [
+          "onboarding"
+        ],
+        "summary": "Onboarding:List-Recovery-Cases",
+        "description": "Every merged recovery case for this business, most recently active first.",
+        "operationId": "onboarding_list_recovery_cases_api_onboard_business__business_id__recovery_cases_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RecoveryCaseResponse"
+                  },
+                  "title": "Response Onboarding List Recovery Cases Api Onboard Business  Business Id  Recovery Cases Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/onboard-business/{business_id}/webhooks": {
+      "get": {
+        "tags": [
+          "onboarding"
+        ],
+        "summary": "Onboarding:Get-Webhook-Config",
+        "description": "Live config (url, active, events) of the webhook Razorpay has registered for\nthis business - fetched from Razorpay on every call, not a local cache.",
+        "operationId": "onboarding_get_webhook_config_api_onboard_business__business_id__webhooks_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookConfigResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/onboard-business/{business_id}/refresh-token": {
+      "post": {
+        "tags": [
+          "onboarding"
+        ],
+        "summary": "Onboarding:Refresh-Token",
+        "operationId": "onboarding_refresh_token_api_onboard_business__business_id__refresh_token_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/recovery-cases/": {
+      "get": {
+        "tags": [
+          "recovery-cases"
+        ],
+        "summary": "Recovery-Cases:List",
+        "description": "Every recovery case, most recently active first - an ops/support dashboard's\nmain query. Optionally narrow by `business_id` and/or `status` (e.g.\n`?status=DEAD` to find cases that need a human).",
+        "operationId": "recovery_cases_list_api_recovery_cases__get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Business Id"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/RecoveryCaseStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RecoveryCaseResponse"
+                  },
+                  "title": "Response Recovery Cases List Api Recovery Cases  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/recovery-cases/{case_id}": {
+      "get": {
+        "tags": [
+          "recovery-cases"
+        ],
+        "summary": "Recovery-Cases:Get-By-Id",
+        "description": "One merged case plus its full delivery history (oldest first) - what an\nagent, a support view, or a debugging session needs to see \"what happened\".",
+        "operationId": "recovery_cases_get_by_id_api_recovery_cases__case_id__get",
+        "parameters": [
+          {
+            "name": "case_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Case Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoveryCaseDetailResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/recovery-cases/{case_id}/retry": {
+      "post": {
+        "tags": [
+          "recovery-cases"
+        ],
+        "summary": "Recovery-Cases:Retry",
+        "description": "Manually reopen a `DEAD` or `FAILED` case and dispatch it again - for a\nhuman who just fixed the underlying issue (or wants another shot) rather\nthan waiting on the reconciler's own backoff/aging.",
+        "operationId": "recovery_cases_retry_api_recovery_cases__case_id__retry_post",
+        "parameters": [
+          {
+            "name": "case_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Case Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoveryCaseResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/webhook-events/{event_id}": {
+      "get": {
+        "tags": [
+          "webhook-events"
+        ],
+        "summary": "Webhook-Events:Get-By-Id",
+        "description": "One raw delivery (full verbatim `payload` included) - for debugging a\nspecific webhook outside the context of its merged recovery case.",
+        "operationId": "webhook_events_get_by_id_api_webhook_events__event_id__get",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookEventResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/webhooks/razorpay": {
+      "post": {
+        "tags": [
+          "webhooks"
+        ],
+        "summary": "Webhooks:Razorpay",
+        "description": "Single ingress for every onboarded business' Razorpay webhooks.\n\nFast path: verify signature, normalize the envelope, merge it into its\nrecovery case (same order / same entity -> same case, so a customer\nretrying a failing payment N times is one unit of agent work, not N),\npersist the delivery as history, dispatch the case by priority, return 200.",
+        "operationId": "webhooks_razorpay_api_webhooks_razorpay_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Webhooks Razorpay Api Webhooks Razorpay Post"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "BusinessOnboardInitResponse": {
+        "properties": {
+          "businessId": {
+            "type": "integer",
+            "title": "Businessid"
+          },
+          "referenceId": {
+            "type": "string",
+            "title": "Referenceid"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "authorizationUrl": {
+            "type": "string",
+            "title": "Authorizationurl"
+          },
+          "state": {
+            "type": "string",
+            "title": "State"
+          }
+        },
+        "type": "object",
+        "required": [
+          "businessId",
+          "referenceId",
+          "status",
+          "authorizationUrl",
+          "state"
+        ],
+        "title": "BusinessOnboardInitResponse",
+        "description": "Returned by `POST /onboard-business/` - redirect the business owner here to grant access."
+      },
+      "BusinessOnboardRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "referenceId": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Referenceid"
+          },
+          "contactEmail": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "email"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contactemail"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "referenceId"
+        ],
+        "title": "BusinessOnboardRequest",
+        "description": "Payload to kick off onboarding of a new sub-merchant business."
+      },
+      "BusinessResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "referenceId": {
+            "type": "string",
+            "title": "Referenceid"
+          },
+          "contactEmail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contactemail"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "razorpayAccountId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Razorpayaccountid"
+          },
+          "tokenScope": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tokenscope"
+          },
+          "tokenExpiresAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tokenexpiresat"
+          },
+          "webhookId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Webhookid"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Createdat"
+          },
+          "updatedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updatedat"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "referenceId",
+          "contactEmail",
+          "status",
+          "razorpayAccountId",
+          "tokenScope",
+          "tokenExpiresAt",
+          "webhookId",
+          "createdAt",
+          "updatedAt"
+        ],
+        "title": "BusinessResponse"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "RecoveryCaseDetailResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "businessId": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Businessid"
+          },
+          "razorpayAccountId": {
+            "type": "string",
+            "title": "Razorpayaccountid"
+          },
+          "caseKey": {
+            "type": "string",
+            "title": "Casekey"
+          },
+          "entityType": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entitytype"
+          },
+          "primaryEntityId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Primaryentityid"
+          },
+          "customerEmail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customeremail"
+          },
+          "customerContact": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customercontact"
+          },
+          "latestEventType": {
+            "type": "string",
+            "title": "Latesteventtype"
+          },
+          "latestEntityStatus": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latestentitystatus"
+          },
+          "eventCount": {
+            "type": "integer",
+            "title": "Eventcount"
+          },
+          "processingStatus": {
+            "type": "string",
+            "title": "Processingstatus"
+          },
+          "priority": {
+            "type": "integer",
+            "title": "Priority"
+          },
+          "priorityReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Priorityreason"
+          },
+          "processingAttempts": {
+            "type": "integer",
+            "title": "Processingattempts"
+          },
+          "lastError": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lasterror"
+          },
+          "firstEventAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Firsteventat"
+          },
+          "lastEventAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Lasteventat"
+          },
+          "resolvedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolvedat"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/WebhookEventResponse"
+            },
+            "type": "array",
+            "title": "History"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "businessId",
+          "razorpayAccountId",
+          "caseKey",
+          "entityType",
+          "primaryEntityId",
+          "customerEmail",
+          "customerContact",
+          "latestEventType",
+          "latestEntityStatus",
+          "eventCount",
+          "processingStatus",
+          "priority",
+          "priorityReason",
+          "processingAttempts",
+          "lastError",
+          "firstEventAt",
+          "lastEventAt",
+          "resolvedAt",
+          "history"
+        ],
+        "title": "RecoveryCaseDetailResponse",
+        "description": "Case + its full merged delivery history, oldest first."
+      },
+      "RecoveryCaseResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "businessId": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Businessid"
+          },
+          "razorpayAccountId": {
+            "type": "string",
+            "title": "Razorpayaccountid"
+          },
+          "caseKey": {
+            "type": "string",
+            "title": "Casekey"
+          },
+          "entityType": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entitytype"
+          },
+          "primaryEntityId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Primaryentityid"
+          },
+          "customerEmail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customeremail"
+          },
+          "customerContact": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customercontact"
+          },
+          "latestEventType": {
+            "type": "string",
+            "title": "Latesteventtype"
+          },
+          "latestEntityStatus": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latestentitystatus"
+          },
+          "eventCount": {
+            "type": "integer",
+            "title": "Eventcount"
+          },
+          "processingStatus": {
+            "type": "string",
+            "title": "Processingstatus"
+          },
+          "priority": {
+            "type": "integer",
+            "title": "Priority"
+          },
+          "priorityReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Priorityreason"
+          },
+          "processingAttempts": {
+            "type": "integer",
+            "title": "Processingattempts"
+          },
+          "lastError": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lasterror"
+          },
+          "firstEventAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Firsteventat"
+          },
+          "lastEventAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Lasteventat"
+          },
+          "resolvedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolvedat"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "businessId",
+          "razorpayAccountId",
+          "caseKey",
+          "entityType",
+          "primaryEntityId",
+          "customerEmail",
+          "customerContact",
+          "latestEventType",
+          "latestEntityStatus",
+          "eventCount",
+          "processingStatus",
+          "priority",
+          "priorityReason",
+          "processingAttempts",
+          "lastError",
+          "firstEventAt",
+          "lastEventAt",
+          "resolvedAt"
+        ],
+        "title": "RecoveryCaseResponse"
+      },
+      "RecoveryCaseStatus": {
+        "type": "string",
+        "enum": [
+          "RECEIVED",
+          "QUEUED",
+          "PROCESSING",
+          "PROCESSED",
+          "FAILED",
+          "DEAD",
+          "RESOLVED"
+        ],
+        "title": "RecoveryCaseStatus",
+        "description": "Lifecycle of a merged recovery case - this, not the individual webhook\nevent, is what the agent worker actually claims and processes.\n\n    RECEIVED   - case created, not yet handed to the broker\n    QUEUED     - dispatched, waiting for the agent worker\n    PROCESSING - claimed by the worker, agent run in flight\n    PROCESSED  - the agent finished a run (case may reopen on a new failure)\n    FAILED     - transient failure, will be retried\n    DEAD       - retries exhausted, needs a human\n    RESOLVED   - a resolving event arrived (payment eventually succeeded, ...)"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "WebhookConfigResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active"
+          },
+          "events": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Events"
+          },
+          "alert_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alert Email"
+          },
+          "secret_exists": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Secret Exists"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "url",
+          "active",
+          "events"
+        ],
+        "title": "WebhookConfigResponse",
+        "description": "The live config of a business' registered Razorpay webhook (not cached)."
+      },
+      "WebhookEventResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "eventType": {
+            "type": "string",
+            "title": "Eventtype"
+          },
+          "entityType": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entitytype"
+          },
+          "entityId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entityid"
+          },
+          "entityStatus": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entitystatus"
+          },
+          "orderId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Orderid"
+          },
+          "signatureVerified": {
+            "type": "boolean",
+            "title": "Signatureverified"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Payload"
+          },
+          "eventCreatedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eventcreatedat"
+          },
+          "receivedAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Receivedat"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "eventType",
+          "entityType",
+          "entityId",
+          "entityStatus",
+          "orderId",
+          "signatureVerified",
+          "payload",
+          "eventCreatedAt",
+          "receivedAt"
+        ],
+        "title": "WebhookEventResponse",
+        "description": "One delivery merged into a case - the agent's (and now the API's) history."
+      }
+    }
+  }
+}

@@ -35,13 +35,12 @@ def build_dedupe_key(*, event_id: str | None, raw_body: bytes) -> str:
     return "sha256:" + hashlib.sha256(raw_body).hexdigest()
 
 
-def normalize_event(
-    body: dict[str, typing.Any],
-    *,
-    dedupe_key: str,
-    signature_verified: bool,
-    business_id: int | None,
-) -> dict[str, typing.Any]:
+def extract_primary_entity(body: dict[str, typing.Any]) -> tuple[str | None, dict[str, typing.Any]]:
+    """
+    Pull `(entity_type, entity_dict)` out of a raw Razorpay event body - the one
+    piece of type-specific unwrapping every event shares. Reused by the agent's
+    context builder so it never needs per-event-type branches either.
+    """
     contains = body.get("contains") or []
     entity_type: str | None = contains[0] if contains else None
 
@@ -51,6 +50,18 @@ def normalize_event(
         node = payload.get(entity_type)
         if isinstance(node, dict) and isinstance(node.get("entity"), dict):
             entity = node["entity"]
+
+    return entity_type, entity
+
+
+def normalize_event(
+    body: dict[str, typing.Any],
+    *,
+    dedupe_key: str,
+    signature_verified: bool,
+    business_id: int | None,
+) -> dict[str, typing.Any]:
+    entity_type, entity = extract_primary_entity(body)
 
     return {
         "dedupe_key": dedupe_key,

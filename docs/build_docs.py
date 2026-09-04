@@ -1,0 +1,2244 @@
+"""
+Razorpay API Documentation Builder
+Generates high-fidelity documentation matching razorpay.com/docs/api design
+"""
+
+import json
+import os
+import glob
+
+def load_openapi():
+    with open("docs/api/openapi.json", "r") as f:
+        return json.load(f)
+
+def load_webhook_samples():
+    samples = {}
+    for filepath in sorted(glob.glob("docs/webhooks/**/*.json", recursive=True)):
+        rel = os.path.relpath(filepath, "docs/webhooks")
+        try:
+            with open(filepath, "r") as f:
+                data = json.load(f)
+                category = rel.split(os.sep)[0]
+                samples[rel] = {
+                    "category": category,
+                    "filename": os.path.basename(filepath),
+                    "event": data.get("event", "event.unknown"),
+                    "data": data
+                }
+        except Exception as e:
+            print(f"Error loading {filepath}: {e}")
+    return samples
+
+def html_escape(text):
+    if text is None:
+        return ""
+    return str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+
+def build_docs_html():
+    openapi = load_openapi()
+    webhook_samples = load_webhook_samples()
+
+    # Pre-defined sample responses for high fidelity
+    sample_responses = {
+        "health_check": {
+            "200": {"status": "ok"}
+        },
+        "onboarding_initiate": {
+            "201": {
+                "business_id": 42,
+                "reference_id": "merchant_ref_98231",
+                "status": "PENDING",
+                "authorization_url": "https://auth.razorpay.com/authorize?client_id=rzp_live_client&response_type=code&state=7f8a9b2c3d4e5f...&scope=read_write",
+                "state": "7f8a9b2c3d4e5f60a1b2c3d4e5f67890"
+            },
+            "409": {
+                "detail": "Business with reference_id 'merchant_ref_98231' already exists."
+            },
+            "502": {
+                "detail": "Razorpay OAuth service unavailable"
+            }
+        },
+        "onboarding_callback": {
+            "200": {
+                "id": 42,
+                "name": "Acme Retail Store",
+                "reference_id": "merchant_ref_98231",
+                "contact_email": "owner@acmeretail.in",
+                "status": "ACTIVE",
+                "razorpay_account_id": "acc_P9Xk12MnOpQ8",
+                "token_scope": "read_write",
+                "token_expires_at": "2026-10-05T12:00:00Z",
+                "webhook_id": "wh_KlmNopQ8910",
+                "created_at": "2026-09-05T01:00:00Z",
+                "updated_at": "2026-09-05T01:05:00Z"
+            },
+            "400": {
+                "detail": "Authorization was not granted: access_denied"
+            },
+            "404": {
+                "detail": "OAuth state not recognized or expired"
+            }
+        },
+        "onboarding_list": {
+            "200": [
+                {
+                    "id": 42,
+                    "name": "Acme Retail Store",
+                    "reference_id": "merchant_ref_98231",
+                    "contact_email": "owner@acmeretail.in",
+                    "status": "ACTIVE",
+                    "razorpay_account_id": "acc_P9Xk12MnOpQ8",
+                    "token_scope": "read_write",
+                    "token_expires_at": "2026-10-05T12:00:00Z",
+                    "webhook_id": "wh_KlmNopQ8910",
+                    "created_at": "2026-09-05T01:00:00Z",
+                    "updated_at": "2026-09-05T01:05:00Z"
+                },
+                {
+                    "id": 43,
+                    "name": "Zenith SaaS Corp",
+                    "reference_id": "sub_merchant_5541",
+                    "contact_email": "billing@zenith.ai",
+                    "status": "ACTIVE",
+                    "razorpay_account_id": "acc_Z8Kl19BnQm72",
+                    "token_scope": "read_write",
+                    "token_expires_at": "2026-10-12T15:30:00Z",
+                    "webhook_id": "wh_90AbcdEfGh",
+                    "created_at": "2026-09-04T10:00:00Z",
+                    "updated_at": "2026-09-04T10:02:00Z"
+                }
+            ]
+        },
+        "onboarding_get_by_id": {
+            "200": {
+                "id": 42,
+                "name": "Acme Retail Store",
+                "reference_id": "merchant_ref_98231",
+                "contact_email": "owner@acmeretail.in",
+                "status": "ACTIVE",
+                "razorpay_account_id": "acc_P9Xk12MnOpQ8",
+                "token_scope": "read_write",
+                "token_expires_at": "2026-10-05T12:00:00Z",
+                "webhook_id": "wh_KlmNopQ8910",
+                "created_at": "2026-09-05T01:00:00Z",
+                "updated_at": "2026-09-05T01:05:00Z"
+            },
+            "404": {
+                "detail": "Business '42' not found"
+            }
+        },
+        "onboarding_list_recovery_cases": {
+            "200": [
+                {
+                    "id": 108,
+                    "business_id": 42,
+                    "razorpay_account_id": "acc_P9Xk12MnOpQ8",
+                    "case_key": "order:order_O8ZkKl99mNo1",
+                    "entity_type": "order",
+                    "primary_entity_id": "order_O8ZkKl99mNo1",
+                    "customer_email": "rahul.sharma@example.com",
+                    "customer_contact": "+919876543210",
+                    "latest_event_type": "payment.failed",
+                    "latest_entity_status": "failed",
+                    "event_count": 3,
+                    "processing_status": "QUEUED",
+                    "priority": 2,
+                    "priority_reason": "High-value failed checkout (> ₹5,000)",
+                    "processing_attempts": 1,
+                    "last_error": None,
+                    "first_event_at": "2026-09-05T01:12:00Z",
+                    "last_event_at": "2026-09-05T01:14:32Z",
+                    "resolved_at": None
+                }
+            ],
+            "404": {
+                "detail": "Business '42' not found"
+            }
+        },
+        "onboarding_get_webhook_config": {
+            "200": {
+                "id": "wh_KlmNopQ8910",
+                "url": "https://api.agent.example.com/api/webhooks/razorpay",
+                "active": True,
+                "events": [
+                    "payment.dispute.lost",
+                    "payment_link.expired",
+                    "invoice.expired",
+                    "subscription.paused",
+                    "subscription.cancelled",
+                    "subscription.pending",
+                    "subscription.halted",
+                    "payment.failed"
+                ],
+                "alert_email": "devops@agent.example.com",
+                "secret_exists": True,
+                "created_at": 1725498000
+            },
+            "404": {
+                "detail": "Business '42' has no webhook registered yet."
+            },
+            "502": {
+                "detail": "Razorpay API error when querying webhook configuration"
+            }
+        },
+        "onboarding_refresh_token": {
+            "200": {
+                "id": 42,
+                "name": "Acme Retail Store",
+                "reference_id": "merchant_ref_98231",
+                "contact_email": "owner@acmeretail.in",
+                "status": "ACTIVE",
+                "razorpay_account_id": "acc_P9Xk12MnOpQ8",
+                "token_scope": "read_write",
+                "token_expires_at": "2026-10-05T12:00:00Z",
+                "webhook_id": "wh_KlmNopQ8910",
+                "created_at": "2026-09-05T01:00:00Z",
+                "updated_at": "2026-09-05T01:25:00Z"
+            },
+            "404": {
+                "detail": "Business '42' not found"
+            },
+            "502": {
+                "detail": "Failed to exchange refresh token with Razorpay OAuth"
+            }
+        },
+        "recovery_cases_list": {
+            "200": [
+                {
+                    "id": 108,
+                    "business_id": 42,
+                    "razorpay_account_id": "acc_P9Xk12MnOpQ8",
+                    "case_key": "order:order_O8ZkKl99mNo1",
+                    "entity_type": "order",
+                    "primary_entity_id": "order_O8ZkKl99mNo1",
+                    "customer_email": "rahul.sharma@example.com",
+                    "customer_contact": "+919876543210",
+                    "latest_event_type": "payment.failed",
+                    "latest_entity_status": "failed",
+                    "event_count": 3,
+                    "processing_status": "PROCESSING",
+                    "priority": 2,
+                    "priority_reason": "High-value failed checkout",
+                    "processing_attempts": 1,
+                    "last_error": None,
+                    "first_event_at": "2026-09-05T01:12:00Z",
+                    "last_event_at": "2026-09-05T01:14:32Z",
+                    "resolved_at": None
+                },
+                {
+                    "id": 107,
+                    "business_id": 43,
+                    "razorpay_account_id": "acc_Z8Kl19BnQm72",
+                    "case_key": "entity:sub_P0128NmQ",
+                    "entity_type": "subscription",
+                    "primary_entity_id": "sub_P0128NmQ",
+                    "customer_email": "ananya.iyer@example.com",
+                    "customer_contact": "+919811223344",
+                    "latest_event_type": "subscription.halted",
+                    "latest_entity_status": "halted",
+                    "event_count": 1,
+                    "processing_status": "DEAD",
+                    "priority": 4,
+                    "priority_reason": "Customer card expired after 3 auto-debit retries",
+                    "processing_attempts": 3,
+                    "last_error": "Customer unreachable via WhatsApp and automated IVR",
+                    "first_event_at": "2026-09-04T18:30:00Z",
+                    "last_event_at": "2026-09-04T18:30:00Z",
+                    "resolved_at": None
+                }
+            ]
+        },
+        "recovery_cases_get_by_id": {
+            "200": {
+                "id": 108,
+                "business_id": 42,
+                "razorpay_account_id": "acc_P9Xk12MnOpQ8",
+                "case_key": "order:order_O8ZkKl99mNo1",
+                "entity_type": "order",
+                "primary_entity_id": "order_O8ZkKl99mNo1",
+                "customer_email": "rahul.sharma@example.com",
+                "customer_contact": "+919876543210",
+                "latest_event_type": "payment.failed",
+                "latest_entity_status": "failed",
+                "event_count": 2,
+                "processing_status": "PROCESSING",
+                "priority": 2,
+                "priority_reason": "High-value failed checkout",
+                "processing_attempts": 1,
+                "last_error": None,
+                "first_event_at": "2026-09-05T01:12:00Z",
+                "last_event_at": "2026-09-05T01:14:32Z",
+                "resolved_at": None,
+                "history": [
+                    {
+                        "id": 501,
+                        "event_type": "payment.failed",
+                        "entity_type": "payment",
+                        "entity_id": "pay_O8ZkKl99mNo1",
+                        "entity_status": "failed",
+                        "order_id": "order_O8ZkKl99mNo1",
+                        "signature_verified": True,
+                        "payload": {
+                            "entity": "event",
+                            "account_id": "acc_P9Xk12MnOpQ8",
+                            "event": "payment.failed"
+                        },
+                        "event_created_at": "2026-09-05T01:12:00Z",
+                        "received_at": "2026-09-05T01:12:02Z"
+                    },
+                    {
+                        "id": 502,
+                        "event_type": "payment.failed",
+                        "entity_type": "payment",
+                        "entity_id": "pay_O8ZkKl99mNo2",
+                        "entity_status": "failed",
+                        "order_id": "order_O8ZkKl99mNo1",
+                        "signature_verified": True,
+                        "payload": {
+                            "entity": "event",
+                            "account_id": "acc_P9Xk12MnOpQ8",
+                            "event": "payment.failed"
+                        },
+                        "event_created_at": "2026-09-05T01:14:30Z",
+                        "received_at": "2026-09-05T01:14:32Z"
+                    }
+                ]
+            },
+            "404": {
+                "detail": "RecoveryCase '108' not found"
+            }
+        },
+        "recovery_cases_retry": {
+            "200": {
+                "id": 107,
+                "business_id": 43,
+                "razorpay_account_id": "acc_Z8Kl19BnQm72",
+                "case_key": "entity:sub_P0128NmQ",
+                "entity_type": "subscription",
+                "primary_entity_id": "sub_P0128NmQ",
+                "customer_email": "ananya.iyer@example.com",
+                "customer_contact": "+919811223344",
+                "latest_event_type": "subscription.halted",
+                "latest_entity_status": "halted",
+                "event_count": 1,
+                "processing_status": "QUEUED",
+                "priority": 4,
+                "priority_reason": "manual retry",
+                "processing_attempts": 0,
+                "last_error": None,
+                "first_event_at": "2026-09-04T18:30:00Z",
+                "last_event_at": "2026-09-04T18:30:00Z",
+                "resolved_at": None
+            },
+            "404": {
+                "detail": "RecoveryCase '107' not found"
+            }
+        },
+        "webhook_events_get_by_id": {
+            "200": {
+                "id": 501,
+                "event_type": "payment.failed",
+                "entity_type": "payment",
+                "entity_id": "pay_O8ZkKl99mNo1",
+                "entity_status": "failed",
+                "order_id": "order_O8ZkKl99mNo1",
+                "signature_verified": True,
+                "payload": {
+                    "entity": "event",
+                    "account_id": "acc_P9Xk12MnOpQ8",
+                    "event": "payment.failed",
+                    "contains": ["payment"],
+                    "payload": {
+                        "payment": {
+                            "entity": {
+                                "id": "pay_O8ZkKl99mNo1",
+                                "amount": 750000,
+                                "currency": "INR",
+                                "status": "failed",
+                                "order_id": "order_O8ZkKl99mNo1",
+                                "error_code": "BAD_REQUEST_ERROR",
+                                "error_description": "Payment was declined by the issuing bank."
+                            }
+                        }
+                    }
+                },
+                "event_created_at": "2026-09-05T01:12:00Z",
+                "received_at": "2026-09-05T01:12:02Z"
+            },
+            "404": {
+                "detail": "WebhookEvent '501' not found"
+            }
+        },
+        "webhooks_razorpay": {
+            "200": {
+                "status": "queued",
+                "case_id": "108"
+            },
+            "400": {
+                "detail": "Invalid JSON body: Expecting value"
+            },
+            "503": {
+                "detail": "Could not persist event, please redeliver"
+            }
+        }
+    }
+
+    html = f"""<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Razorpay Agent API Reference & Documentation</title>
+  <meta name="description" content="Complete developer reference, guides, interactive playground and webhook specifications for the Razorpay Agent Autonomous Payment Recovery System.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230c6cf2'/><path d='M30 75L50 25L70 75' stroke='white' stroke-width='14' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./api/style.css?v=2.0">
+</head>
+<body>
+
+  <!-- Top Navbar -->
+  <header class="navbar">
+    <div class="nav-left">
+      <button type="button" class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Toggle navigation menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+      </button>
+      <a href="#overview" class="brand-link">
+        <div class="brand-logo-icon">R</div>
+        <span>Razorpay <span style="color: var(--primary-light);">Agent API</span></span>
+      </a>
+      <span class="brand-badge">v0.1.0</span>
+      <div class="env-selector">
+        <span class="env-status-dot"></span>
+        <select id="env-select" title="Target Server URL">
+          <option value="http://localhost:8000">Local (http://localhost:8000)</option>
+          <option value="http://127.0.0.1:8000">127.0.0.1:8000</option>
+          <option value="https://api.razorpayagent.io">Production (Live)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="nav-center">
+      <button type="button" class="search-trigger" id="search-trigger" aria-label="Search API Reference">
+        <span class="search-trigger-text">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          Search endpoints, parameters, guides...
+        </span>
+        <span class="search-shortcut">⌘K</span>
+      </button>
+    </div>
+
+    <div class="nav-right">
+      <a href="#overview" class="nav-link">Overview</a>
+      <a href="#webhooks-catalog" class="nav-link">Webhook Catalog</a>
+      <a href="./api/openapi.json" target="_blank" class="nav-link" style="display: flex; align-items: center; gap: 4px;">
+        OpenAPI 3.1
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+      </a>
+      <a href="./api/swagger.html" target="_blank" class="nav-link" style="display: flex; align-items: center; gap: 4px;">
+        Swagger UI
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+      </a>
+      <button type="button" class="theme-toggle-btn" id="theme-toggle-btn" aria-label="Toggle dark/light theme"></button>
+    </div>
+  </header>
+
+  <!-- Documentation Layout -->
+  <div class="docs-container">
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+    <!-- Left Column: Sticky Sidebar -->
+    <aside class="sidebar">
+      <div class="nav-group">
+        <div class="nav-group-title">Getting Started</div>
+        <a href="#overview" class="nav-item active">Overview & Architecture</a>
+        <a href="#authentication" class="nav-item">Authentication & Security</a>
+        <a href="#recovery-lifecycle" class="nav-item">Recovery Lifecycle & Logic</a>
+        <a href="#error-codes" class="nav-item">Error Codes & Responses</a>
+      </div>
+
+      <div class="nav-group">
+        <div class="nav-group-title">Business Onboarding</div>
+        <a href="#endpoint-onboarding-initiate" class="nav-item">
+          <span class="method-tag post">POST</span>
+          <span>Initiate Onboarding</span>
+        </a>
+        <a href="#endpoint-onboarding-callback" class="nav-item">
+          <span class="method-tag get">GET</span>
+          <span>OAuth Callback</span>
+        </a>
+        <a href="#endpoint-onboarding-list" class="nav-item">
+          <span class="method-tag get">GET</span>
+          <span>List Businesses</span>
+        </a>
+        <a href="#endpoint-onboarding-get-by-id" class="nav-item">
+          <span class="method-tag get">GET</span>
+          <span>Get Business</span>
+        </a>
+        <a href="#endpoint-onboarding-list-recovery-cases" class="nav-item">
+          <span class="method-tag get">GET</span>
+          <span>List Business Cases</span>
+        </a>
+        <a href="#endpoint-onboarding-get-webhook-config" class="nav-item">
+          <span class="method-tag get">GET</span>
+          <span>Live Webhook Config</span>
+        </a>
+        <a href="#endpoint-onboarding-refresh-token" class="nav-item">
+          <span class="method-tag post">POST</span>
+          <span>Refresh OAuth Token</span>
+        </a>
+      </div>
+
+      <div class="nav-group">
+        <div class="nav-group-title">Recovery Cases</div>
+        <a href="#endpoint-recovery-cases-list" class="nav-item">
+          <span class="method-tag get">GET</span>
+          <span>List Recovery Cases</span>
+        </a>
+        <a href="#endpoint-recovery-cases-get-by-id" class="nav-item">
+          <span class="method-tag get">GET</span>
+          <span>Get Case & History</span>
+        </a>
+        <a href="#endpoint-recovery-cases-retry" class="nav-item">
+          <span class="method-tag post">POST</span>
+          <span>Retry Recovery Case</span>
+        </a>
+      </div>
+
+      <div class="nav-group">
+        <div class="nav-group-title">Webhook Events</div>
+        <a href="#endpoint-webhook-events-get-by-id" class="nav-item">
+          <span class="method-tag get">GET</span>
+          <span>Get Webhook Event</span>
+        </a>
+      </div>
+
+      <div class="nav-group">
+        <div class="nav-group-title">Webhook Ingress</div>
+        <a href="#endpoint-webhooks-razorpay" class="nav-item">
+          <span class="method-tag post">POST</span>
+          <span>Receive Razorpay Webhook</span>
+        </a>
+      </div>
+
+      <div class="nav-group">
+        <div class="nav-group-title">Webhooks Catalog</div>
+        <a href="#webhooks-catalog" class="nav-item">Sample Payloads & Schemas</a>
+        <a href="#webhooks-payment" class="nav-item">Payment Failures</a>
+        <a href="#webhooks-subscriptions" class="nav-item">Subscriptions</a>
+        <a href="#webhooks-downtimes" class="nav-item">Provider Downtimes</a>
+      </div>
+
+      <div class="nav-group">
+        <div class="nav-group-title">System</div>
+        <a href="#endpoint-health" class="nav-item">
+          <span class="method-tag get">GET</span>
+          <span>Health Probe</span>
+        </a>
+      </div>
+    </aside>
+
+    <!-- Main Content Column -->
+    <main class="main-content">
+
+      <!-- Section: Overview -->
+      <section id="overview" class="doc-section">
+        <div class="endpoint-header">
+          <h1 class="endpoint-title">Razorpay Autonomous Recovery Agent API</h1>
+          <div class="endpoint-description">
+            <p>Welcome to the <strong>Razorpay Agent Developer Reference</strong>. This API powers an enterprise-grade autonomous recovery system designed to monitor failed transactions, paused subscriptions, payment link expirations, and bank downtime events across multiple sub-merchants on Razorpay.</p>
+            <p>The system ingests real-time webhooks, validates cryptographic HMAC-SHA256 signatures, deduplicates repeat retry storms, aggregates multiple deliveries into unified <strong>Recovery Cases</strong>, and dispatches intelligent recovery workflows (automated WhatsApp outreach, SMS, IVR calls, and smart retry schedules).</p>
+          </div>
+          
+          <div class="callout tip">
+            <strong>Key Architecture Rule:</strong> Recovery is centered on <em>Cases</em>, not individual events. If an end customer tries to checkout 5 times with a failing card within 3 minutes, the system receives 5 webhooks, appends all 5 to the event audit history, but maintains <strong>exactly 1 active Recovery Case</strong> for the AI agent to solve.
+          </div>
+        </div>
+      </section>
+
+      <!-- Section: Authentication -->
+      <section id="authentication" class="doc-section">
+        <div class="endpoint-header">
+          <h2 class="endpoint-title">Authentication & Security</h2>
+          <div class="endpoint-description">
+            <p>The API utilizes three distinct layers of security depending on the endpoint category:</p>
+            <ul>
+              <li><strong>Sub-Merchant OAuth 2.0:</strong> Sub-merchants grant permissions through Razorpay's OAuth Authorization Code grant flow. Access and refresh tokens are encrypted at rest in PostgreSQL using AES-256 Fernet encryption.</li>
+              <li><strong>Webhook Signature Verification:</strong> Inbound webhooks from Razorpay deliver an <code>X-Razorpay-Signature</code> header. The server calculates an HMAC-SHA256 digest of the raw request payload using the sub-merchant's unique webhook secret and compares digests with constant-time equality.</li>
+              <li><strong>API Token / JWT Bearer:</strong> Admin and dashboard endpoints can be protected by standard Bearer JWT tokens configured via <code>settings.JWT_SECRET_KEY</code>.</li>
+            </ul>
+          </div>
+
+          <div class="callout warning">
+            <strong>Webhook Signature Header:</strong> All requests to <code>/api/webhooks/razorpay</code> must include the header:
+            <br><br>
+            <code>X-Razorpay-Signature: &lt;hex_hmac_sha256_digest&gt;</code>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section: Recovery Lifecycle -->
+      <section id="recovery-lifecycle" class="doc-section">
+        <div class="endpoint-header">
+          <h2 class="endpoint-title">Recovery Lifecycle & States</h2>
+          <div class="endpoint-description">
+            <p>A recovery case transitions through the following lifecycle stages:</p>
+            <div class="table-container"><table class="param-table">
+              <thead>
+                <tr>
+                  <th>Status</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>RECEIVED</code></td>
+                  <td>The case was just created from an inbound webhook and has not yet been queued to the broker.</td>
+                </tr>
+                <tr>
+                  <td><code>QUEUED</code></td>
+                  <td>Enqueued into Celery / Redis with an assigned priority score (1 to 10).</td>
+                </tr>
+                <tr>
+                  <td><code>PROCESSING</code></td>
+                  <td>Claimed by an autonomous agent worker; recovery outreach or simulation tool execution is actively running.</td>
+                </tr>
+                <tr>
+                  <td><code>PROCESSED</code></td>
+                  <td>The agent completed its scheduled steps (outreach sent, notification dispatched). Case remains monitorable if fresh events arrive.</td>
+                </tr>
+                <tr>
+                  <td><code>RESOLVED</code></td>
+                  <td>A resolving event arrived (e.g., <code>payment.captured</code> or <code>subscription.activated</code>). Case is closed successfully.</td>
+                </tr>
+                <tr>
+                  <td><code>FAILED</code></td>
+                  <td>A transient execution failure occurred; reconciler will retry automatically using exponential backoff.</td>
+                </tr>
+                <tr>
+                  <td><code>DEAD</code></td>
+                  <td>Retry attempts exhausted without resolution; case is escalated for human support review.</td>
+                </tr>
+              </tbody>
+            </table></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section: Error Codes -->
+      <section id="error-codes" class="doc-section">
+        <div class="endpoint-header">
+          <h2 class="endpoint-title">HTTP Error Codes</h2>
+          <div class="endpoint-description">
+            <div class="table-container"><table class="param-table">
+              <thead>
+                <tr>
+                  <th>Code</th>
+                  <th>Reason</th>
+                  <th>Resolution / Meaning</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>200 OK</code></td>
+                  <td>Success</td>
+                  <td>Request succeeded.</td>
+                </tr>
+                <tr>
+                  <td><code>201 Created</code></td>
+                  <td>Resource Created</td>
+                  <td>Entity successfully registered (e.g. pending business onboarding).</td>
+                </tr>
+                <tr>
+                  <td><code>400 Bad Request</code></td>
+                  <td>Client Error</td>
+                  <td>Invalid JSON payload, missing required query parameters, or denied OAuth grant.</td>
+                </tr>
+                <tr>
+                  <td><code>404 Not Found</code></td>
+                  <td>Entity Missing</td>
+                  <td>The requested <code>business_id</code>, <code>case_id</code>, or <code>event_id</code> does not exist in the database.</td>
+                </tr>
+                <tr>
+                  <td><code>409 Conflict</code></td>
+                  <td>Duplicate Entity</td>
+                  <td>Business with the specified <code>reference_id</code> has already been registered.</td>
+                </tr>
+                <tr>
+                  <td><code>422 Unprocessable</code></td>
+                  <td>Schema Validation</td>
+                  <td>Failed Pydantic schema validation (data type mismatch, length constraints violated).</td>
+                </tr>
+                <tr>
+                  <td><code>502 Bad Gateway</code></td>
+                  <td>Upstream Provider Failure</td>
+                  <td>Communication failure when contacting Razorpay API or OAuth endpoints.</td>
+                </tr>
+                <tr>
+                  <td><code>503 Unavailable</code></td>
+                  <td>Database / Persistence Down</td>
+                  <td>Server could not safely store the webhook event; Razorpay is instructed to redeliver via backoff.</td>
+                </tr>
+              </tbody>
+            </table></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================================================================
+           ONBOARDING ENDPOINTS
+           ================================================================== -->
+
+      <!-- POST /api/onboard-business/ -->
+      <section id="endpoint-onboarding-initiate" class="doc-section">
+        <div class="endpoint-grid">
+          <div class="endpoint-details">
+            <div class="endpoint-header">
+              <div class="endpoint-title-row">
+                <span class="method-tag post">POST</span>
+                <h3 class="endpoint-title">Initiate Business Onboarding</h3>
+              </div>
+              <div class="endpoint-route-bar">
+                <span class="endpoint-path">/api/onboard-business/</span>
+                <button type="button" class="copy-btn" title="Copy endpoint path">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+              </div>
+              <div class="endpoint-description">
+                <p><strong>Step 1 of Onboarding:</strong> Registers a new sub-merchant in <code>PENDING</code> status, generates a secure random <code>state</code> token, and builds the official Razorpay OAuth authorization URL.</p>
+                <p>Redirect the merchant business owner to the returned <code>authorization_url</code>. Once they approve access, Razorpay redirects back to <code>/api/onboard-business/callback</code> with the grant code.</p>
+              </div>
+            </div>
+
+            <div class="params-section">
+              <h4 class="params-heading">Request Body (JSON)</h4>
+              <div class="table-container"><table class="param-table">
+                <thead>
+                  <tr>
+                    <th>Field</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="param-name-cell">
+                      <div class="param-name">name</div>
+                      <div class="param-badges">
+                        <span class="req-badge">Required</span>
+                        <span class="type-badge">string (1..255)</span>
+                      </div>
+                    </td>
+                    <td class="param-desc">Legal or trading business display name (e.g. <code>"Acme Retail Store"</code>).</td>
+                  </tr>
+                  <tr>
+                    <td class="param-name-cell">
+                      <div class="param-name">reference_id</div>
+                      <div class="param-badges">
+                        <span class="req-badge">Required</span>
+                        <span class="type-badge">string (1..255)</span>
+                      </div>
+                    </td>
+                    <td class="param-desc">Unique external identifier for your platform's merchant entity (e.g. <code>"merchant_ref_98231"</code>).</td>
+                  </tr>
+                  <tr>
+                    <td class="param-name-cell">
+                      <div class="param-name">contact_email</div>
+                      <div class="param-badges">
+                        <span class="opt-badge">Optional</span>
+                        <span class="type-badge">email</span>
+                      </div>
+                    </td>
+                    <td class="param-desc">Primary merchant contact email address for alerts and notifications.</td>
+                  </tr>
+                  <tr>
+                    <td class="param-name-cell">
+                      <div class="param-name">scope</div>
+                      <div class="param-badges">
+                        <span class="opt-badge">Optional</span>
+                        <span class="type-badge">string</span>
+                      </div>
+                    </td>
+                    <td class="param-desc">OAuth permission scope override. Defaults to <code>"read_write"</code>.</td>
+                  </tr>
+                </tbody>
+              </table></div>
+            </div>
+          </div>
+
+          <!-- Code Console & Playground -->
+          <div class="code-panel" data-method="POST" data-path="/api/onboard-business/">
+            <div class="console-tabs-header">
+              <div class="lang-tabs">
+                <button type="button" class="lang-tab-btn active" data-lang="curl">cURL</button>
+                <button type="button" class="lang-tab-btn" data-lang="python">Python</button>
+                <button type="button" class="lang-tab-btn" data-lang="javascript">Node.js</button>
+                <button type="button" class="lang-tab-btn" data-lang="go">Go</button>
+              </div>
+              <div class="console-actions">
+                <button type="button" class="copy-btn" data-copy-target=".code-snippet-pre code" title="Copy Code">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="code-snippet-box code-snippet-pre">
+              <pre><code></code></pre>
+            </div>
+
+            <!-- Playground Drawer -->
+            <div class="playground-drawer">
+              <div class="playground-title">
+                <span>Interactive Playground</span>
+                <span style="color: #34d399; font-size: 0.68rem;">● Ready</span>
+              </div>
+              <div class="playground-form-group">
+                <label class="playground-label">JSON Request Body</label>
+                <textarea class="playground-textarea" data-body-input spellcheck="false">{{
+  "name": "Acme Retail Store",
+  "reference_id": "merchant_ref_98231",
+  "contact_email": "owner@acmeretail.in"
+}}</textarea>
+              </div>
+              <button type="button" class="playground-send-btn">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                Send Request
+              </button>
+            </div>
+
+            <!-- Response Viewer -->
+            <div class="response-box-header">
+              <div class="response-tabs">
+                <button type="button" class="resp-tab-btn active" data-status="201" data-sample='{json.dumps(sample_responses["onboarding_initiate"]["201"])}'>201</button>
+                <button type="button" class="resp-tab-btn" data-status="409" data-sample='{json.dumps(sample_responses["onboarding_initiate"]["409"])}'>409</button>
+                <button type="button" class="resp-tab-btn" data-status="502" data-sample='{json.dumps(sample_responses["onboarding_initiate"]["502"])}'>502</button>
+              </div>
+              <span class="response-status-pill status-201">201 Created</span>
+            </div>
+            <pre class="response-body-pre"><code>{json.dumps(sample_responses["onboarding_initiate"]["201"], indent=2)}</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- GET /api/onboard-business/callback -->
+      <section id="endpoint-onboarding-callback" class="doc-section">
+        <div class="endpoint-grid">
+          <div class="endpoint-details">
+            <div class="endpoint-header">
+              <div class="endpoint-title-row">
+                <span class="method-tag get">GET</span>
+                <h3 class="endpoint-title">OAuth Redirect Callback</h3>
+              </div>
+              <div class="endpoint-route-bar">
+                <span class="endpoint-path">/api/onboard-business/callback</span>
+                <button type="button" class="copy-btn" title="Copy endpoint path">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+              </div>
+              <div class="endpoint-description">
+                <p><strong>Step 2 of Onboarding:</strong> Target redirect endpoint called by Razorpay when the merchant authorizes access.</p>
+                <p>The server validates the <code>state</code> token, exchanges the authorization <code>code</code> for live OAuth credentials, securely encrypts tokens, automatically provisions a dedicated webhook subscription on the merchant's Razorpay account for all recovery event triggers, and updates the business state to <code>ACTIVE</code>.</p>
+              </div>
+            </div>
+
+            <div class="params-section">
+              <h4 class="params-heading">Query Parameters</h4>
+              <div class="table-container"><table class="param-table">
+                <thead>
+                  <tr>
+                    <th>Parameter</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="param-name-cell">
+                      <div class="param-name">state</div>
+                      <div class="param-badges">
+                        <span class="req-badge">Required</span>
+                        <span class="type-badge">string</span>
+                      </div>
+                    </td>
+                    <td class="param-desc">The cryptographic state string originally returned during Step 1.</td>
+                  </tr>
+                  <tr>
+                    <td class="param-name-cell">
+                      <div class="param-name">code</div>
+                      <div class="param-badges">
+                        <span class="opt-badge">Conditional</span>
+                        <span class="type-badge">string</span>
+                      </div>
+                    </td>
+                    <td class="param-desc">Single-use authorization code delivered by Razorpay upon merchant consent.</td>
+                  </tr>
+                  <tr>
+                    <td class="param-name-cell">
+                      <div class="param-name">error</div>
+                      <div class="param-badges">
+                        <span class="opt-badge">Optional</span>
+                        <span class="type-badge">string</span>
+                      </div>
+                    </td>
+                    <td class="param-desc">Error reason if authorization was declined by the merchant.</td>
+                  </tr>
+                </tbody>
+              </table></div>
+            </div>
+          </div>
+
+          <!-- Code Console & Playground -->
+          <div class="code-panel" data-method="GET" data-path="/api/onboard-business/callback">
+            <div class="console-tabs-header">
+              <div class="lang-tabs">
+                <button type="button" class="lang-tab-btn active" data-lang="curl">cURL</button>
+                <button type="button" class="lang-tab-btn" data-lang="python">Python</button>
+                <button type="button" class="lang-tab-btn" data-lang="javascript">Node.js</button>
+                <button type="button" class="lang-tab-btn" data-lang="go">Go</button>
+              </div>
+              <div class="console-actions">
+                <button type="button" class="copy-btn" data-copy-target=".code-snippet-pre code" title="Copy Code">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="code-snippet-box code-snippet-pre">
+              <pre><code></code></pre>
+            </div>
+
+            <!-- Playground Drawer -->
+            <div class="playground-drawer">
+              <div class="playground-title">
+                <span>Interactive Playground</span>
+                <span style="color: #34d399; font-size: 0.68rem;">● Ready</span>
+              </div>
+              <div class="playground-form-group">
+                <label class="playground-label">state (Required)</label>
+                <input type="text" class="playground-input" data-param-type="query" data-param-name="state" value="7f8a9b2c3d4e5f60a1b2c3d4e5f67890">
+              </div>
+              <div class="playground-form-group">
+                <label class="playground-label">code</label>
+                <input type="text" class="playground-input" data-param-type="query" data-param-name="code" value="auth_code_sample_123">
+              </div>
+              <button type="button" class="playground-send-btn">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                Send Request
+              </button>
+            </div>
+
+            <!-- Response Viewer -->
+            <div class="response-box-header">
+              <div class="response-tabs">
+                <button type="button" class="resp-tab-btn active" data-status="200" data-sample='{json.dumps(sample_responses["onboarding_callback"]["200"])}'>200</button>
+                <button type="button" class="resp-tab-btn" data-status="400" data-sample='{json.dumps(sample_responses["onboarding_callback"]["400"])}'>400</button>
+                <button type="button" class="resp-tab-btn" data-status="404" data-sample='{json.dumps(sample_responses["onboarding_callback"]["404"])}'>404</button>
+              </div>
+              <span class="response-status-pill status-200">200 OK</span>
+            </div>
+            <pre class="response-body-pre"><code>{json.dumps(sample_responses["onboarding_callback"]["200"], indent=2)}</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- GET /api/onboard-business/ -->
+      <section id="endpoint-onboarding-list" class="doc-section">
+        <div class="endpoint-grid">
+          <div class="endpoint-details">
+            <div class="endpoint-header">
+              <div class="endpoint-title-row">
+                <span class="method-tag get">GET</span>
+                <h3 class="endpoint-title">List Onboarded Businesses</h3>
+              </div>
+              <div class="endpoint-route-bar">
+                <span class="endpoint-path">/api/onboard-business/</span>
+                <button type="button" class="copy-btn" title="Copy endpoint path">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+              </div>
+              <div class="endpoint-description">
+                <p>Returns a paginated list of all sub-merchant businesses onboarded into the platform, including their connection status, Razorpay account IDs, and webhook registrations.</p>
+              </div>
+            </div>
+
+            <div class="params-section">
+              <h4 class="params-heading">Query Parameters</h4>
+              <div class="table-container"><table class="param-table">
+                <thead>
+                  <tr>
+                    <th>Parameter</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="param-name-cell">
+                      <div class="param-name">limit</div>
+                      <div class="param-badges">
+                        <span class="opt-badge">Optional</span>
+                        <span class="type-badge">integer (1..200)</span>
+                      </div>
+                    </td>
+                    <td class="param-desc">Number of business records to return. Default is <code>50</code>.</td>
+                  </tr>
+                  <tr>
+                    <td class="param-name-cell">
+                      <div class="param-name">offset</div>
+                      <div class="param-badges">
+                        <span class="opt-badge">Optional</span>
+                        <span class="type-badge">integer (&gt;= 0)</span>
+                      </div>
+                    </td>
+                    <td class="param-desc">Zero-indexed pagination offset. Default is <code>0</code>.</td>
+                  </tr>
+                </tbody>
+              </table></div>
+            </div>
+          </div>
+
+          <!-- Code Console & Playground -->
+          <div class="code-panel" data-method="GET" data-path="/api/onboard-business/">
+            <div class="console-tabs-header">
+              <div class="lang-tabs">
+                <button type="button" class="lang-tab-btn active" data-lang="curl">cURL</button>
+                <button type="button" class="lang-tab-btn" data-lang="python">Python</button>
+                <button type="button" class="lang-tab-btn" data-lang="javascript">Node.js</button>
+                <button type="button" class="lang-tab-btn" data-lang="go">Go</button>
+              </div>
+              <div class="console-actions">
+                <button type="button" class="copy-btn" data-copy-target=".code-snippet-pre code" title="Copy Code">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="code-snippet-box code-snippet-pre">
+              <pre><code></code></pre>
+            </div>
+
+            <!-- Playground Drawer -->
+            <div class="playground-drawer">
+              <div class="playground-title">
+                <span>Interactive Playground</span>
+                <span style="color: #34d399; font-size: 0.68rem;">● Ready</span>
+              </div>
+              <div class="playground-form-group">
+                <label class="playground-label">limit</label>
+                <input type="number" class="playground-input" data-param-type="query" data-param-name="limit" value="10">
+              </div>
+              <div class="playground-form-group">
+                <label class="playground-label">offset</label>
+                <input type="number" class="playground-input" data-param-type="query" data-param-name="offset" value="0">
+              </div>
+              <button type="button" class="playground-send-btn">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                Send Request
+              </button>
+            </div>
+
+            <!-- Response Viewer -->
+            <div class="response-box-header">
+              <div class="response-tabs">
+                <button type="button" class="resp-tab-btn active" data-status="200" data-sample='{json.dumps(sample_responses["onboarding_list"]["200"])}'>200</button>
+              </div>
+              <span class="response-status-pill status-200">200 OK</span>
+            </div>
+            <pre class="response-body-pre"><code>{json.dumps(sample_responses["onboarding_list"]["200"], indent=2)}</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- GET /api/onboard-business/{{business_id}} -->
+      <section id="endpoint-onboarding-get-by-id" class="doc-section">
+        <div class="endpoint-grid">
+          <div class="endpoint-details">
+            <div class="endpoint-header">
+              <div class="endpoint-title-row">
+                <span class="method-tag get">GET</span>
+                <h3 class="endpoint-title">Get Business by ID</h3>
+              </div>
+              <div class="endpoint-route-bar">
+                <span class="endpoint-path">/api/onboard-business/{{business_id}}</span>
+                <button type="button" class="copy-btn" title="Copy endpoint path">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+              </div>
+              <div class="endpoint-description">
+                <p>Retrieves metadata, connection health, and account IDs for a single onboarded merchant business.</p>
+              </div>
+            </div>
+
+            <div class="params-section">
+              <h4 class="params-heading">Path Parameters</h4>
+              <div class="table-container"><table class="param-table">
+                <thead>
+                  <tr>
+                    <th>Parameter</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="param-name-cell">
+                      <div class="param-name">business_id</div>
+                      <div class="param-badges">
+                        <span class="req-badge">Required</span>
+                        <span class="type-badge">integer</span>
+                      </div>
+                    </td>
+                    <td class="param-desc">Internal numeric database identifier of the business entity.</td>
+                  </tr>
+                </tbody>
+              </table></div>
+            </div>
+          </div>
+
+          <!-- Code Console & Playground -->
+          <div class="code-panel" data-method="GET" data-path="/api/onboard-business/{{business_id}}">
+            <div class="console-tabs-header">
+              <div class="lang-tabs">
+                <button type="button" class="lang-tab-btn active" data-lang="curl">cURL</button>
+                <button type="button" class="lang-tab-btn" data-lang="python">Python</button>
+                <button type="button" class="lang-tab-btn" data-lang="javascript">Node.js</button>
+                <button type="button" class="lang-tab-btn" data-lang="go">Go</button>
+              </div>
+              <div class="console-actions">
+                <button type="button" class="copy-btn" data-copy-target=".code-snippet-pre code" title="Copy Code">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="code-snippet-box code-snippet-pre">
+              <pre><code></code></pre>
+            </div>
+
+            <!-- Playground Drawer -->
+            <div class="playground-drawer">
+              <div class="playground-title">
+                <span>Interactive Playground</span>
+                <span style="color: #34d399; font-size: 0.68rem;">● Ready</span>
+              </div>
+              <div class="playground-form-group">
+                <label class="playground-label">business_id (Path)</label>
+                <input type="number" class="playground-input" data-param-type="path" data-param-name="business_id" value="42">
+              </div>
+              <button type="button" class="playground-send-btn">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                Send Request
+              </button>
+            </div>
+
+            <!-- Response Viewer -->
+            <div class="response-box-header">
+              <div class="response-tabs">
+                <button type="button" class="resp-tab-btn active" data-status="200" data-sample='{json.dumps(sample_responses["onboarding_get_by_id"]["200"])}'>200</button>
+                <button type="button" class="resp-tab-btn" data-status="404" data-sample='{json.dumps(sample_responses["onboarding_get_by_id"]["404"])}'>404</button>
+              </div>
+              <span class="response-status-pill status-200">200 OK</span>
+            </div>
+            <pre class="response-body-pre"><code>{json.dumps(sample_responses["onboarding_get_by_id"]["200"], indent=2)}</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- GET /api/onboard-business/{{business_id}}/recovery-cases -->
+      <section id="endpoint-onboarding-list-recovery-cases" class="doc-section">
+        <div class="endpoint-grid">
+          <div class="endpoint-details">
+            <div class="endpoint-header">
+              <div class="endpoint-title-row">
+                <span class="method-tag get">GET</span>
+                <h3 class="endpoint-title">List Business Recovery Cases</h3>
+              </div>
+              <div class="endpoint-route-bar">
+                <span class="endpoint-path">/api/onboard-business/{{business_id}}/recovery-cases</span>
+                <button type="button" class="copy-btn" title="Copy endpoint path">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+              </div>
+              <div class="endpoint-description">
+                <p>Retrieves every merged recovery case belonging strictly to this business, ordered with the most recently active case first. Ideal for merchant-facing portals.</p>
+              </div>
+            </div>
+
+            <div class="params-section">
+              <h4 class="params-heading">Path & Query Parameters</h4>
+              <div class="table-container"><table class="param-table">
+                <thead>
+                  <tr>
+                    <th>Parameter</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="param-name-cell">
+                      <div class="param-name">business_id</div>
+                      <div class="param-badges">
+                        <span class="req-badge">Required</span>
+                        <span class="type-badge">integer (path)</span>
+                      </div>
+                    </td>
+                    <td class="param-desc">Identifier of the target business entity.</td>
+                  </tr>
+                  <tr>
+                    <td class="param-name-cell">
+                      <div class="param-name">limit</div>
+                      <div class="param-badges">
+                        <span class="opt-badge">Optional</span>
+                        <span class="type-badge">integer (query, 1..200)</span>
+                      </div>
+                    </td>
+                    <td class="param-desc">Page size. Default is <code>50</code>.</td>
+                  </tr>
+                  <tr>
+                    <td class="param-name-cell">
+                      <div class="param-name">offset</div>
+                      <div class="param-badges">
+                        <span class="opt-badge">Optional</span>
+                        <span class="type-badge">integer (query)</span>
+                      </div>
+                    </td>
+                    <td class="param-desc">Page offset. Default is <code>0</code>.</td>
+                  </tr>
+                </tbody>
+              </table></div>
+            </div>
+          </div>
+
+          <!-- Code Console & Playground -->
+          <div class="code-panel" data-method="GET" data-path="/api/onboard-business/{{business_id}}/recovery-cases">
+            <div class="console-tabs-header">
+              <div class="lang-tabs">
+                <button type="button" class="lang-tab-btn active" data-lang="curl">cURL</button>
+                <button type="button" class="lang-tab-btn" data-lang="python">Python</button>
+                <button type="button" class="lang-tab-btn" data-lang="javascript">Node.js</button>
+                <button type="button" class="lang-tab-btn" data-lang="go">Go</button>
+              </div>
+              <div class="console-actions">
+                <button type="button" class="copy-btn" data-copy-target=".code-snippet-pre code" title="Copy Code">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="code-snippet-box code-snippet-pre">
+              <pre><code></code></pre>
+            </div>
+
+            <!-- Playground Drawer -->
+            <div class="playground-drawer">
+              <div class="playground-title">
+                <span>Interactive Playground</span>
+                <span style="color: #34d399; font-size: 0.68rem;">● Ready</span>
+              </div>
+              <div class="playground-form-group">
+                <label class="playground-label">business_id (Path)</label>
+                <input type="number" class="playground-input" data-param-type="path" data-param-name="business_id" value="42">
+              </div>
+              <button type="button" class="playground-send-btn">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                Send Request
+              </button>
+            </div>
+
+            <!-- Response Viewer -->
+            <div class="response-box-header">
+              <div class="response-tabs">
+                <button type="button" class="resp-tab-btn active" data-status="200" data-sample='{json.dumps(sample_responses["onboarding_list_recovery_cases"]["200"])}'>200</button>
+                <button type="button" class="resp-tab-btn" data-status="404" data-sample='{json.dumps(sample_responses["onboarding_list_recovery_cases"]["404"])}'>404</button>
+              </div>
+              <span class="response-status-pill status-200">200 OK</span>
+            </div>
+            <pre class="response-body-pre"><code>{json.dumps(sample_responses["onboarding_list_recovery_cases"]["200"], indent=2)}</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- GET /api/onboard-business/{{business_id}}/webhooks -->
+      <section id="endpoint-onboarding-get-webhook-config" class="doc-section">
+        <div class="endpoint-grid">
+          <div class="endpoint-details">
+            <div class="endpoint-header">
+              <div class="endpoint-title-row">
+                <span class="method-tag get">GET</span>
+                <h3 class="endpoint-title">Live Webhook Configuration</h3>
+              </div>
+              <div class="endpoint-route-bar">
+                <span class="endpoint-path">/api/onboard-business/{{business_id}}/webhooks</span>
+                <button type="button" class="copy-btn" title="Copy endpoint path">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+              </div>
+              <div class="endpoint-description">
+                <p>Queries Razorpay's live Partner API directly to verify the exact status, webhook endpoint URL, and subscribed event triggers currently registered on this merchant's Razorpay account.</p>
+              </div>
+            </div>
+
+            <div class="params-section">
+              <h4 class="params-heading">Path Parameters</h4>
+              <div class="table-container"><table class="param-table">
+                <thead>
+                  <tr>
+                    <th>Parameter</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="param-name-cell">
+                      <div class="param-name">business_id</div>
+                      <div class="param-badges">
+                        <span class="req-badge">Required</span>
+                        <span class="type-badge">integer (path)</span>
+                      </div>
+                    </td>
+                    <td class="param-desc">Identifier of the target business entity.</td>
+                  </tr>
+                </tbody>
+              </table></div>
+            </div>
+          </div>
+
+          <!-- Code Console & Playground -->
+          <div class="code-panel" data-method="GET" data-path="/api/onboard-business/{{business_id}}/webhooks">
+            <div class="console-tabs-header">
+              <div class="lang-tabs">
+                <button type="button" class="lang-tab-btn active" data-lang="curl">cURL</button>
+                <button type="button" class="lang-tab-btn" data-lang="python">Python</button>
+                <button type="button" class="lang-tab-btn" data-lang="javascript">Node.js</button>
+                <button type="button" class="lang-tab-btn" data-lang="go">Go</button>
+              </div>
+              <div class="console-actions">
+                <button type="button" class="copy-btn" data-copy-target=".code-snippet-pre code" title="Copy Code">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="code-snippet-box code-snippet-pre">
+              <pre><code></code></pre>
+            </div>
+
+            <!-- Playground Drawer -->
+            <div class="playground-drawer">
+              <div class="playground-title">
+                <span>Interactive Playground</span>
+                <span style="color: #34d399; font-size: 0.68rem;">● Ready</span>
+              </div>
+              <div class="playground-form-group">
+                <label class="playground-label">business_id (Path)</label>
+                <input type="number" class="playground-input" data-param-type="path" data-param-name="business_id" value="42">
+              </div>
+              <button type="button" class="playground-send-btn">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                Send Request
+              </button>
+            </div>
+
+            <!-- Response Viewer -->
+            <div class="response-box-header">
+              <div class="response-tabs">
+                <button type="button" class="resp-tab-btn active" data-status="200" data-sample='{json.dumps(sample_responses["onboarding_get_webhook_config"]["200"])}'>200</button>
+                <button type="button" class="resp-tab-btn" data-status="404" data-sample='{json.dumps(sample_responses["onboarding_get_webhook_config"]["404"])}'>404</button>
+                <button type="button" class="resp-tab-btn" data-status="502" data-sample='{json.dumps(sample_responses["onboarding_get_webhook_config"]["502"])}'>502</button>
+              </div>
+              <span class="response-status-pill status-200">200 OK</span>
+            </div>
+            <pre class="response-body-pre"><code>{json.dumps(sample_responses["onboarding_get_webhook_config"]["200"], indent=2)}</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- POST /api/onboard-business/{{business_id}}/refresh-token -->
+      <section id="endpoint-onboarding-refresh-token" class="doc-section">
+        <div class="endpoint-grid">
+          <div class="endpoint-details">
+            <div class="endpoint-header">
+              <div class="endpoint-title-row">
+                <span class="method-tag post">POST</span>
+                <h3 class="endpoint-title">Refresh Business OAuth Token</h3>
+              </div>
+              <div class="endpoint-route-bar">
+                <span class="endpoint-path">/api/onboard-business/{{business_id}}/refresh-token</span>
+                <button type="button" class="copy-btn" title="Copy endpoint path">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+              </div>
+              <div class="endpoint-description">
+                <p>Decrypts the stored refresh token, contacts Razorpay OAuth <code>/token</code> to generate fresh credentials, re-encrypts the new access and refresh tokens, updates expiry timestamps, and saves them to the database.</p>
+              </div>
+            </div>
+
+            <div class="params-section">
+              <h4 class="params-heading">Path Parameters</h4>
+              <div class="table-container"><table class="param-table">
+                <thead>
+                  <tr>
+                    <th>Parameter</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="param-name-cell">
+                      <div class="param-name">business_id</div>
+                      <div class="param-badges">
+                        <span class="req-badge">Required</span>
+                        <span class="type-badge">integer</span>
+                      </div>
+                    </td>
+                    <td class="param-desc">Target business numeric ID.</td>
+                  </tr>
+                </tbody>
+              </table></div>
+            </div>
+          </div>
+
+          <!-- Code Console & Playground -->
+          <div class="code-panel" data-method="POST" data-path="/api/onboard-business/{{business_id}}/refresh-token">
+            <div class="console-tabs-header">
+              <div class="lang-tabs">
+                <button type="button" class="lang-tab-btn active" data-lang="curl">cURL</button>
+                <button type="button" class="lang-tab-btn" data-lang="python">Python</button>
+                <button type="button" class="lang-tab-btn" data-lang="javascript">Node.js</button>
+                <button type="button" class="lang-tab-btn" data-lang="go">Go</button>
+              </div>
+              <div class="console-actions">
+                <button type="button" class="copy-btn" data-copy-target=".code-snippet-pre code" title="Copy Code">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="code-snippet-box code-snippet-pre">
+              <pre><code></code></pre>
+            </div>
+
+            <!-- Playground Drawer -->
+            <div class="playground-drawer">
+              <div class="playground-title">
+                <span>Interactive Playground</span>
+                <span style="color: #34d399; font-size: 0.68rem;">● Ready</span>
+              </div>
+              <div class="playground-form-group">
+                <label class="playground-label">business_id (Path)</label>
+                <input type="number" class="playground-input" data-param-type="path" data-param-name="business_id" value="42">
+              </div>
+              <button type="button" class="playground-send-btn">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                Send Request
+              </button>
+            </div>
+
+            <!-- Response Viewer -->
+            <div class="response-box-header">
+              <div class="response-tabs">
+                <button type="button" class="resp-tab-btn active" data-status="200" data-sample='{json.dumps(sample_responses["onboarding_refresh_token"]["200"])}'>200</button>
+                <button type="button" class="resp-tab-btn" data-status="404" data-sample='{json.dumps(sample_responses["onboarding_refresh_token"]["404"])}'>404</button>
+                <button type="button" class="resp-tab-btn" data-status="502" data-sample='{json.dumps(sample_responses["onboarding_refresh_token"]["502"])}'>502</button>
+              </div>
+              <span class="response-status-pill status-200">200 OK</span>
+            </div>
+            <pre class="response-body-pre"><code>{json.dumps(sample_responses["onboarding_refresh_token"]["200"], indent=2)}</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================================================================
+           RECOVERY CASES ENDPOINTS
+           ================================================================== -->
+
+      <!-- GET /api/recovery-cases/ -->
+      <section id="endpoint-recovery-cases-list" class="doc-section">
+        <div class="endpoint-grid">
+          <div class="endpoint-details">
+            <div class="endpoint-header">
+              <div class="endpoint-title-row">
+                <span class="method-tag get">GET</span>
+                <h3 class="endpoint-title">List Recovery Cases</h3>
+              </div>
+              <div class="endpoint-route-bar">
+                <span class="endpoint-path">/api/recovery-cases/</span>
+                <button type="button" class="copy-btn" title="Copy endpoint path">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+              </div>
+              <div class="endpoint-description">
+                <p>The primary query endpoint for operations, customer support, and agent monitoring dashboards. Returns cases ordered by most recently active first.</p>
+                <p>You can filter by <code>business_id</code> or target lifecycle <code>status</code> (e.g., <code>?status=DEAD</code> to pull only critical cases needing human intervention).</p>
+              </div>
+            </div>
+
+            <div class="params-section">
+              <h4 class="params-heading">Query Parameters</h4>
+              <div class="table-container"><table class="param-table">
+                <thead>
+                  <tr>
+                    <th>Parameter</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="param-name-cell">
+                      <div class="param-name">business_id</div>
+                      <div class="param-badges">
+                        <span class="opt-badge">Optional</span>
+                        <span class="type-badge">integer</span>
+                      </div>
+                    </td>
+                    <td class="param-desc">Filter cases to a specific business.</td>
+                  </tr>
+                  <tr>
+                    <td class="param-name-cell">
+                      <div class="param-name">status</div>
+                      <div class="param-badges">
+                        <span class="opt-badge">Optional</span>
+                        <span class="type-badge">enum</span>
+                      </div>
+                    </td>
+                    <td class="param-desc">
+                      Filter by case status: <code>RECEIVED</code>, <code>QUEUED</code>, <code>PROCESSING</code>, <code>PROCESSED</code>, <code>FAILED</code>, <code>DEAD</code>, <code>RESOLVED</code>.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="param-name-cell">
+                      <div class="param-name">limit</div>
+                      <div class="param-badges">
+                        <span class="opt-badge">Optional</span>
+                        <span class="type-badge">integer (1..200)</span>
+                      </div>
+                    </td>
+                    <td class="param-desc">Page size. Default is <code>50</code>.</td>
+                  </tr>
+                  <tr>
+                    <td class="param-name-cell">
+                      <div class="param-name">offset</div>
+                      <div class="param-badges">
+                        <span class="opt-badge">Optional</span>
+                        <span class="type-badge">integer</span>
+                      </div>
+                    </td>
+                    <td class="param-desc">Page offset. Default is <code>0</code>.</td>
+                  </tr>
+                </tbody>
+              </table></div>
+            </div>
+          </div>
+
+          <!-- Code Console & Playground -->
+          <div class="code-panel" data-method="GET" data-path="/api/recovery-cases/">
+            <div class="console-tabs-header">
+              <div class="lang-tabs">
+                <button type="button" class="lang-tab-btn active" data-lang="curl">cURL</button>
+                <button type="button" class="lang-tab-btn" data-lang="python">Python</button>
+                <button type="button" class="lang-tab-btn" data-lang="javascript">Node.js</button>
+                <button type="button" class="lang-tab-btn" data-lang="go">Go</button>
+              </div>
+              <div class="console-actions">
+                <button type="button" class="copy-btn" data-copy-target=".code-snippet-pre code" title="Copy Code">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="code-snippet-box code-snippet-pre">
+              <pre><code></code></pre>
+            </div>
+
+            <!-- Playground Drawer -->
+            <div class="playground-drawer">
+              <div class="playground-title">
+                <span>Interactive Playground</span>
+                <span style="color: #34d399; font-size: 0.68rem;">● Ready</span>
+              </div>
+              <div class="playground-form-group">
+                <label class="playground-label">status (Query Filter)</label>
+                <select class="playground-input" data-param-type="query" data-param-name="status">
+                  <option value="">All Statuses</option>
+                  <option value="QUEUED">QUEUED</option>
+                  <option value="PROCESSING">PROCESSING</option>
+                  <option value="DEAD">DEAD</option>
+                  <option value="RESOLVED">RESOLVED</option>
+                  <option value="FAILED">FAILED</option>
+                </select>
+              </div>
+              <div class="playground-form-group">
+                <label class="playground-label">limit</label>
+                <input type="number" class="playground-input" data-param-type="query" data-param-name="limit" value="20">
+              </div>
+              <button type="button" class="playground-send-btn">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                Send Request
+              </button>
+            </div>
+
+            <!-- Response Viewer -->
+            <div class="response-box-header">
+              <div class="response-tabs">
+                <button type="button" class="resp-tab-btn active" data-status="200" data-sample='{json.dumps(sample_responses["recovery_cases_list"]["200"])}'>200</button>
+              </div>
+              <span class="response-status-pill status-200">200 OK</span>
+            </div>
+            <pre class="response-body-pre"><code>{json.dumps(sample_responses["recovery_cases_list"]["200"], indent=2)}</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- GET /api/recovery-cases/{{case_id}} -->
+      <section id="endpoint-recovery-cases-get-by-id" class="doc-section">
+        <div class="endpoint-grid">
+          <div class="endpoint-details">
+            <div class="endpoint-header">
+              <div class="endpoint-title-row">
+                <span class="method-tag get">GET</span>
+                <h3 class="endpoint-title">Get Case Details & History</h3>
+              </div>
+              <div class="endpoint-route-bar">
+                <span class="endpoint-path">/api/recovery-cases/{{case_id}}</span>
+                <button type="button" class="copy-btn" title="Copy endpoint path">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+              </div>
+              <div class="endpoint-description">
+                <p>Returns the complete state of a merged recovery case alongside its full chronological delivery history (<code>history: list[WebhookEventResponse]</code>, oldest first).</p>
+                <p>This gives autonomous agents and human debugging operators complete timeline visibility: how many times the customer re-attempted payment, error codes returned on each attempt, and customer contact data.</p>
+              </div>
+            </div>
+
+            <div class="params-section">
+              <h4 class="params-heading">Path Parameters</h4>
+              <div class="table-container"><table class="param-table">
+                <thead>
+                  <tr>
+                    <th>Parameter</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="param-name-cell">
+                      <div class="param-name">case_id</div>
+                      <div class="param-badges">
+                        <span class="req-badge">Required</span>
+                        <span class="type-badge">integer</span>
+                      </div>
+                    </td>
+                    <td class="param-desc">Identifier of the recovery case.</td>
+                  </tr>
+                </tbody>
+              </table></div>
+            </div>
+          </div>
+
+          <!-- Code Console & Playground -->
+          <div class="code-panel" data-method="GET" data-path="/api/recovery-cases/{{case_id}}">
+            <div class="console-tabs-header">
+              <div class="lang-tabs">
+                <button type="button" class="lang-tab-btn active" data-lang="curl">cURL</button>
+                <button type="button" class="lang-tab-btn" data-lang="python">Python</button>
+                <button type="button" class="lang-tab-btn" data-lang="javascript">Node.js</button>
+                <button type="button" class="lang-tab-btn" data-lang="go">Go</button>
+              </div>
+              <div class="console-actions">
+                <button type="button" class="copy-btn" data-copy-target=".code-snippet-pre code" title="Copy Code">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="code-snippet-box code-snippet-pre">
+              <pre><code></code></pre>
+            </div>
+
+            <!-- Playground Drawer -->
+            <div class="playground-drawer">
+              <div class="playground-title">
+                <span>Interactive Playground</span>
+                <span style="color: #34d399; font-size: 0.68rem;">● Ready</span>
+              </div>
+              <div class="playground-form-group">
+                <label class="playground-label">case_id (Path)</label>
+                <input type="number" class="playground-input" data-param-type="path" data-param-name="case_id" value="108">
+              </div>
+              <button type="button" class="playground-send-btn">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                Send Request
+              </button>
+            </div>
+
+            <!-- Response Viewer -->
+            <div class="response-box-header">
+              <div class="response-tabs">
+                <button type="button" class="resp-tab-btn active" data-status="200" data-sample='{json.dumps(sample_responses["recovery_cases_get_by_id"]["200"])}'>200</button>
+                <button type="button" class="resp-tab-btn" data-status="404" data-sample='{json.dumps(sample_responses["recovery_cases_get_by_id"]["404"])}'>404</button>
+              </div>
+              <span class="response-status-pill status-200">200 OK</span>
+            </div>
+            <pre class="response-body-pre"><code>{json.dumps(sample_responses["recovery_cases_get_by_id"]["200"], indent=2)}</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- POST /api/recovery-cases/{{case_id}}/retry -->
+      <section id="endpoint-recovery-cases-retry" class="doc-section">
+        <div class="endpoint-grid">
+          <div class="endpoint-details">
+            <div class="endpoint-header">
+              <div class="endpoint-title-row">
+                <span class="method-tag post">POST</span>
+                <h3 class="endpoint-title">Retry Recovery Case</h3>
+              </div>
+              <div class="endpoint-route-bar">
+                <span class="endpoint-path">/api/recovery-cases/{{case_id}}/retry</span>
+                <button type="button" class="copy-btn" title="Copy endpoint path">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+              </div>
+              <div class="endpoint-description">
+                <p>Manually reopens a <code>DEAD</code> or <code>FAILED</code> case and dispatches it immediately to the Celery broker for agent execution.</p>
+                <p>This allows human support reps to trigger an instant re-run after resolving external dependencies (e.g. updating a customer phone number or whitelisting a card), bypassing default backoff aging.</p>
+              </div>
+            </div>
+
+            <div class="params-section">
+              <h4 class="params-heading">Path Parameters</h4>
+              <div class="table-container"><table class="param-table">
+                <thead>
+                  <tr>
+                    <th>Parameter</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="param-name-cell">
+                      <div class="param-name">case_id</div>
+                      <div class="param-badges">
+                        <span class="req-badge">Required</span>
+                        <span class="type-badge">integer</span>
+                      </div>
+                    </td>
+                    <td class="param-desc">Target recovery case numeric ID.</td>
+                  </tr>
+                </tbody>
+              </table></div>
+            </div>
+          </div>
+
+          <!-- Code Console & Playground -->
+          <div class="code-panel" data-method="POST" data-path="/api/recovery-cases/{{case_id}}/retry">
+            <div class="console-tabs-header">
+              <div class="lang-tabs">
+                <button type="button" class="lang-tab-btn active" data-lang="curl">cURL</button>
+                <button type="button" class="lang-tab-btn" data-lang="python">Python</button>
+                <button type="button" class="lang-tab-btn" data-lang="javascript">Node.js</button>
+                <button type="button" class="lang-tab-btn" data-lang="go">Go</button>
+              </div>
+              <div class="console-actions">
+                <button type="button" class="copy-btn" data-copy-target=".code-snippet-pre code" title="Copy Code">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="code-snippet-box code-snippet-pre">
+              <pre><code></code></pre>
+            </div>
+
+            <!-- Playground Drawer -->
+            <div class="playground-drawer">
+              <div class="playground-title">
+                <span>Interactive Playground</span>
+                <span style="color: #34d399; font-size: 0.68rem;">● Ready</span>
+              </div>
+              <div class="playground-form-group">
+                <label class="playground-label">case_id (Path)</label>
+                <input type="number" class="playground-input" data-param-type="path" data-param-name="case_id" value="107">
+              </div>
+              <button type="button" class="playground-send-btn">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                Send Request
+              </button>
+            </div>
+
+            <!-- Response Viewer -->
+            <div class="response-box-header">
+              <div class="response-tabs">
+                <button type="button" class="resp-tab-btn active" data-status="200" data-sample='{json.dumps(sample_responses["recovery_cases_retry"]["200"])}'>200</button>
+                <button type="button" class="resp-tab-btn" data-status="404" data-sample='{json.dumps(sample_responses["recovery_cases_retry"]["404"])}'>404</button>
+              </div>
+              <span class="response-status-pill status-200">200 OK</span>
+            </div>
+            <pre class="response-body-pre"><code>{json.dumps(sample_responses["recovery_cases_retry"]["200"], indent=2)}</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================================================================
+           WEBHOOK EVENTS ENDPOINTS
+           ================================================================== -->
+
+      <!-- GET /api/webhook-events/{{event_id}} -->
+      <section id="endpoint-webhook-events-get-by-id" class="doc-section">
+        <div class="endpoint-grid">
+          <div class="endpoint-details">
+            <div class="endpoint-header">
+              <div class="endpoint-title-row">
+                <span class="method-tag get">GET</span>
+                <h3 class="endpoint-title">Get Webhook Event Delivery</h3>
+              </div>
+              <div class="endpoint-route-bar">
+                <span class="endpoint-path">/api/webhook-events/{{event_id}}</span>
+                <button type="button" class="copy-btn" title="Copy endpoint path">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+              </div>
+              <div class="endpoint-description">
+                <p>Retrieves a single raw webhook delivery record by ID, including its original verbatim JSON <code>payload</code> and cryptographic signature verification indicator.</p>
+                <p>Used for deep inspection of specific webhooks independent of the aggregated recovery case.</p>
+              </div>
+            </div>
+
+            <div class="params-section">
+              <h4 class="params-heading">Path Parameters</h4>
+              <div class="table-container"><table class="param-table">
+                <thead>
+                  <tr>
+                    <th>Parameter</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="param-name-cell">
+                      <div class="param-name">event_id</div>
+                      <div class="param-badges">
+                        <span class="req-badge">Required</span>
+                        <span class="type-badge">integer</span>
+                      </div>
+                    </td>
+                    <td class="param-desc">Identifier of the stored raw webhook delivery event.</td>
+                  </tr>
+                </tbody>
+              </table></div>
+            </div>
+          </div>
+
+          <!-- Code Console & Playground -->
+          <div class="code-panel" data-method="GET" data-path="/api/webhook-events/{{event_id}}">
+            <div class="console-tabs-header">
+              <div class="lang-tabs">
+                <button type="button" class="lang-tab-btn active" data-lang="curl">cURL</button>
+                <button type="button" class="lang-tab-btn" data-lang="python">Python</button>
+                <button type="button" class="lang-tab-btn" data-lang="javascript">Node.js</button>
+                <button type="button" class="lang-tab-btn" data-lang="go">Go</button>
+              </div>
+              <div class="console-actions">
+                <button type="button" class="copy-btn" data-copy-target=".code-snippet-pre code" title="Copy Code">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="code-snippet-box code-snippet-pre">
+              <pre><code></code></pre>
+            </div>
+
+            <!-- Playground Drawer -->
+            <div class="playground-drawer">
+              <div class="playground-title">
+                <span>Interactive Playground</span>
+                <span style="color: #34d399; font-size: 0.68rem;">● Ready</span>
+              </div>
+              <div class="playground-form-group">
+                <label class="playground-label">event_id (Path)</label>
+                <input type="number" class="playground-input" data-param-type="path" data-param-name="event_id" value="501">
+              </div>
+              <button type="button" class="playground-send-btn">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                Send Request
+              </button>
+            </div>
+
+            <!-- Response Viewer -->
+            <div class="response-box-header">
+              <div class="response-tabs">
+                <button type="button" class="resp-tab-btn active" data-status="200" data-sample='{json.dumps(sample_responses["webhook_events_get_by_id"]["200"])}'>200</button>
+                <button type="button" class="resp-tab-btn" data-status="404" data-sample='{json.dumps(sample_responses["webhook_events_get_by_id"]["404"])}'>404</button>
+              </div>
+              <span class="response-status-pill status-200">200 OK</span>
+            </div>
+            <pre class="response-body-pre"><code>{json.dumps(sample_responses["webhook_events_get_by_id"]["200"], indent=2)}</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================================================================
+           WEBHOOK INGRESS ENDPOINT
+           ================================================================== -->
+
+      <!-- POST /api/webhooks/razorpay -->
+      <section id="endpoint-webhooks-razorpay" class="doc-section">
+        <div class="endpoint-grid">
+          <div class="endpoint-details">
+            <div class="endpoint-header">
+              <div class="endpoint-title-row">
+                <span class="method-tag post">POST</span>
+                <h3 class="endpoint-title">Receive Razorpay Webhook (Ingress)</h3>
+              </div>
+              <div class="endpoint-route-bar">
+                <span class="endpoint-path">/api/webhooks/razorpay</span>
+                <button type="button" class="copy-btn" title="Copy endpoint path">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+              </div>
+              <div class="endpoint-description">
+                <p>The high-throughput ingress endpoint where Razorpay delivers all subscribed webhook events for every onboarded merchant business.</p>
+                <p><strong>Processing Pipeline:</strong></p>
+                <ol style="margin-left: 20px; line-height: 1.7; color: var(--text-muted);">
+                  <li><strong>Merchant Lookup:</strong> Resolves merchant via <code>account_id</code> in the payload envelope.</li>
+                  <li><strong>Signature Verification:</strong> Validates <code>X-Razorpay-Signature</code> using the sub-merchant's secret.</li>
+                  <li><strong>Normalization & Deduplication:</strong> Generates a SHA-256 dedupe key combining the event ID / body.</li>
+                  <li><strong>Case Upsertion:</strong> Keys the recovery case by order (<code>order:&lt;id&gt;</code>) or entity (<code>entity:&lt;id&gt;</code>). Subsequent failures merge into the case.</li>
+                  <li><strong>Priority Calculation:</strong> Computes dynamic priority (1: highest to 5: default) based on transaction value.</li>
+                  <li><strong>Celery Worker Dispatch:</strong> Enqueues the case if new or re-opened; acknowledges Razorpay with <code>200 OK</code>.</li>
+                </ol>
+              </div>
+            </div>
+
+            <div class="params-section">
+              <h4 class="params-heading">HTTP Headers</h4>
+              <div class="table-container"><table class="param-table">
+                <thead>
+                  <tr>
+                    <th>Header</th>
+                    <th>Required</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="param-name-cell">
+                      <div class="param-name">X-Razorpay-Signature</div>
+                    </td>
+                    <td><span class="req-badge">Required</span></td>
+                    <td class="param-desc">HMAC-SHA256 signature generated by Razorpay with the merchant's webhook secret.</td>
+                  </tr>
+                  <tr>
+                    <td class="param-name-cell">
+                      <div class="param-name">X-Razorpay-Event-Id</div>
+                    </td>
+                    <td><span class="opt-badge">Optional</span></td>
+                    <td class="param-desc">Unique delivery event ID used for idempotency tracking.</td>
+                  </tr>
+                </tbody>
+              </table></div>
+
+              <h4 class="params-heading">Sample Webhook Envelope (JSON)</h4>
+              <pre style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 14px; font-family: var(--font-mono); font-size: 0.8rem; overflow-x: auto; color: #38bdf8;"><code>{{
+  "entity": "event",
+  "account_id": "acc_P9Xk12MnOpQ8",
+  "event": "payment.failed",
+  "contains": ["payment"],
+  "payload": {{
+    "payment": {{
+      "entity": {{
+        "id": "pay_O8ZkKl99mNo1",
+        "entity": "payment",
+        "amount": 750000,
+        "currency": "INR",
+        "status": "failed",
+        "order_id": "order_O8ZkKl99mNo1",
+        "email": "rahul.sharma@example.com",
+        "contact": "+919876543210",
+        "error_code": "BAD_REQUEST_ERROR",
+        "error_description": "Payment was declined by issuing bank"
+      }}
+    }}
+  }},
+  "created_at": 1725498000
+}}</code></pre>
+            </div>
+          </div>
+
+          <!-- Code Console & Playground -->
+          <div class="code-panel" data-method="POST" data-path="/api/webhooks/razorpay">
+            <div class="console-tabs-header">
+              <div class="lang-tabs">
+                <button type="button" class="lang-tab-btn active" data-lang="curl">cURL</button>
+                <button type="button" class="lang-tab-btn" data-lang="python">Python</button>
+                <button type="button" class="lang-tab-btn" data-lang="javascript">Node.js</button>
+                <button type="button" class="lang-tab-btn" data-lang="go">Go</button>
+              </div>
+              <div class="console-actions">
+                <button type="button" class="copy-btn" data-copy-target=".code-snippet-pre code" title="Copy Code">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="code-snippet-box code-snippet-pre">
+              <pre><code></code></pre>
+            </div>
+
+            <!-- Playground Drawer -->
+            <div class="playground-drawer">
+              <div class="playground-title">
+                <span>Simulate Webhook Delivery</span>
+                <span style="color: #34d399; font-size: 0.68rem;">● Ready</span>
+              </div>
+              <div class="playground-form-group">
+                <label class="playground-label">Payload Body</label>
+                <textarea class="playground-textarea" data-body-input spellcheck="false">{{
+  "entity": "event",
+  "account_id": "acc_P9Xk12MnOpQ8",
+  "event": "payment.failed",
+  "contains": ["payment"],
+  "payload": {{
+    "payment": {{
+      "entity": {{
+        "id": "pay_test_999",
+        "amount": 500000,
+        "currency": "INR",
+        "status": "failed",
+        "order_id": "order_test_999"
+      }}
+    }}
+  }}
+}}</textarea>
+              </div>
+              <button type="button" class="playground-send-btn">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                Deliver Webhook
+              </button>
+            </div>
+
+            <!-- Response Viewer -->
+            <div class="response-box-header">
+              <div class="response-tabs">
+                <button type="button" class="resp-tab-btn active" data-status="200" data-sample='{json.dumps(sample_responses["webhooks_razorpay"]["200"])}'>200</button>
+                <button type="button" class="resp-tab-btn" data-status="400" data-sample='{json.dumps(sample_responses["webhooks_razorpay"]["400"])}'>400</button>
+                <button type="button" class="resp-tab-btn" data-status="503" data-sample='{json.dumps(sample_responses["webhooks_razorpay"]["503"])}'>503</button>
+              </div>
+              <span class="response-status-pill status-200">200 OK</span>
+            </div>
+            <pre class="response-body-pre"><code>{json.dumps(sample_responses["webhooks_razorpay"]["200"], indent=2)}</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================================================================
+           WEBHOOKS CATALOG & PAYLOAD SPECIFICATIONS
+           ================================================================== -->
+      <section id="webhooks-catalog" class="doc-section">
+        <div class="endpoint-header">
+          <h2 class="endpoint-title">Razorpay Webhooks Catalog</h2>
+          <div class="endpoint-description">
+            <p>Below is the catalog of supported webhook events and actual production payload samples from <code>./docs/webhooks</code>. The recovery agent listens to these events to trigger proactive customer recovery workflows.</p>
+          </div>
+        </div>
+
+        <div id="webhooks-payment" style="margin-top: 32px;">
+          <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 12px; color: var(--text-main);">Payment Failures</h3>
+          <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">
+            Triggered when customer checkout attempts fail across Cards, UPI, Netbanking, or Wallets.
+          </p>
+
+          <div class="webhook-card-grid">
+            <div class="webhook-card">
+              <div class="webhook-card-header">
+                <span class="webhook-card-title">Card Payment Failed</span>
+                <span class="method-tag post">payment.failed</span>
+              </div>
+              <div class="webhook-card-path"><code>docs/webhooks/recovery_webhooks/Payment/payment_failed_card.json</code></div>
+              <pre><code>{json.dumps(webhook_samples.get("recovery_webhooks/Payment/payment_failed_card.json", {}).get("data", {}), indent=2)}</code></pre>
+            </div>
+
+            <div class="webhook-card">
+              <div class="webhook-card-header">
+                <span class="webhook-card-title">UPI Payment Failed</span>
+                <span class="method-tag post">payment.failed</span>
+              </div>
+              <div class="webhook-card-path"><code>docs/webhooks/recovery_webhooks/Payment/payment_failed_upi.json</code></div>
+              <pre><code>{json.dumps(webhook_samples.get("recovery_webhooks/Payment/payment_failed_upi.json", {}).get("data", {}), indent=2)}</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div id="webhooks-subscriptions" style="margin-top: 40px;">
+          <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 12px; color: var(--text-main);">Subscription State Changes</h3>
+          <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">
+            Triggered when recurring mandate debits fail, subscriptions are halted, paused, or pending.
+          </p>
+
+          <div class="webhook-card-grid">
+            <div class="webhook-card">
+              <div class="webhook-card-header">
+                <span class="webhook-card-title">Subscription Halted</span>
+                <span class="method-tag post">subscription.halted</span>
+              </div>
+              <div class="webhook-card-path"><code>docs/webhooks/recovery_webhooks/Subscriptions/subscription_halted.json</code></div>
+              <pre><code>{json.dumps(webhook_samples.get("recovery_webhooks/Subscriptions/subscription_halted.json", {}).get("data", {}), indent=2)}</code></pre>
+            </div>
+
+            <div class="webhook-card">
+              <div class="webhook-card-header">
+                <span class="webhook-card-title">Subscription Paused</span>
+                <span class="method-tag post">subscription.paused</span>
+              </div>
+              <div class="webhook-card-path"><code>docs/webhooks/recovery_webhooks/Subscriptions/subscription_paused.json</code></div>
+              <pre><code>{json.dumps(webhook_samples.get("recovery_webhooks/Subscriptions/subscription_paused.json", {}).get("data", {}), indent=2)}</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <div id="webhooks-downtimes" style="margin-top: 40px;">
+          <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 12px; color: var(--text-main);">Bank & Provider Downtimes</h3>
+          <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">
+            Informs the agent of upstream bank or payment aggregator outages (HDFC, SBI, Turbo UPI, UPI PSP handles) so the agent can route customers to alternative payment rails.
+          </p>
+
+          <div class="webhook-card-grid">
+            <div class="webhook-card">
+              <div class="webhook-card-header">
+                <span class="webhook-card-title">Turbo UPI Downtime Started</span>
+                <span class="method-tag post">payment.downtime.started</span>
+              </div>
+              <div class="webhook-card-path"><code>docs/webhooks/downtime_webhooks/turbo_upi/downtime_started.json</code></div>
+              <pre><code>{json.dumps(webhook_samples.get("downtime_webhooks/turbo_upi/downtime_started.json", {}).get("data", {}), indent=2)}</code></pre>
+            </div>
+
+            <div class="webhook-card">
+              <div class="webhook-card-header">
+                <span class="webhook-card-title">UPI PSP Downtime Resolved</span>
+                <span class="method-tag post">payment.downtime.resolved</span>
+              </div>
+              <div class="webhook-card-path"><code>docs/webhooks/downtime_webhooks/upi_psp/downtime_resolved.json</code></div>
+              <pre><code>{json.dumps(webhook_samples.get("downtime_webhooks/upi_psp/downtime_resolved.json", {}).get("data", {}), indent=2)}</code></pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================================================================
+           SYSTEM HEALTH PROBE
+           ================================================================== -->
+      <section id="endpoint-health" class="doc-section">
+        <div class="endpoint-grid">
+          <div class="endpoint-details">
+            <div class="endpoint-header">
+              <div class="endpoint-title-row">
+                <span class="method-tag get">GET</span>
+                <h3 class="endpoint-title">System Health Probe</h3>
+              </div>
+              <div class="endpoint-route-bar">
+                <span class="endpoint-path">/api/health</span>
+                <button type="button" class="copy-btn" title="Copy endpoint path">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+              </div>
+              <div class="endpoint-description">
+                <p>Standard liveness and readiness probe for load balancers (Kubernetes, AWS ALB, Nginx). Returns <code>{{"status": "ok"}}</code> when the FastAPI service is active.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Code Console & Playground -->
+          <div class="code-panel" data-method="GET" data-path="/api/health">
+            <div class="console-tabs-header">
+              <div class="lang-tabs">
+                <button type="button" class="lang-tab-btn active" data-lang="curl">cURL</button>
+                <button type="button" class="lang-tab-btn" data-lang="python">Python</button>
+                <button type="button" class="lang-tab-btn" data-lang="javascript">Node.js</button>
+                <button type="button" class="lang-tab-btn" data-lang="go">Go</button>
+              </div>
+              <div class="console-actions">
+                <button type="button" class="copy-btn" data-copy-target=".code-snippet-pre code" title="Copy Code">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="code-snippet-box code-snippet-pre">
+              <pre><code></code></pre>
+            </div>
+
+            <!-- Playground Drawer -->
+            <div class="playground-drawer">
+              <div class="playground-title">
+                <span>Interactive Playground</span>
+                <span style="color: #34d399; font-size: 0.68rem;">● Ready</span>
+              </div>
+              <button type="button" class="playground-send-btn">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                Send Request
+              </button>
+            </div>
+
+            <!-- Response Viewer -->
+            <div class="response-box-header">
+              <div class="response-tabs">
+                <button type="button" class="resp-tab-btn active" data-status="200" data-sample='{json.dumps(sample_responses["health_check"]["200"])}'>200</button>
+              </div>
+              <span class="response-status-pill status-200">200 OK</span>
+            </div>
+            <pre class="response-body-pre"><code>{json.dumps(sample_responses["health_check"]["200"], indent=2)}</code></pre>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Command Palette Modal (Cmd+K / Ctrl+K) -->
+  <div class="search-modal-backdrop" id="search-modal">
+    <div class="search-modal-card">
+      <div class="search-input-wrapper">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--text-faint);"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" class="search-input-field" id="search-input" placeholder="Type to search endpoints, paths, guides..." autocomplete="off">
+        <span class="search-shortcut">ESC</span>
+      </div>
+      <div class="search-results-list" id="search-results"></div>
+    </div>
+  </div>
+
+  <script src="./api/app.js?v=2.0"></script>
+</body>
+</html>
+"""
+    return html
+
+def main():
+    print("Building Razorpay API Reference HTML...")
+    html_content = build_docs_html()
+
+    with open("docs/index.html", "w", encoding="utf-8") as f:
+        f.write(html_content)
+    print("✓ Created docs/index.html")
+
+    # In docs/api/index.html, adjust relative asset paths so it loads `./style.css` and `./app.js`
+    api_html_content = html_content.replace('href="./api/style.css?v=2.0"', 'href="./style.css?v=2.0"') \
+                                    .replace('src="./api/app.js?v=2.0"', 'src="./app.js?v=2.0"') \
+                                    .replace('href="./api/openapi.json"', 'href="./openapi.json"') \
+                                    .replace('href="./api/swagger.html"', 'href="./swagger.html"')
+
+    with open("docs/api/index.html", "w", encoding="utf-8") as f:
+        f.write(api_html_content)
+    print("✓ Created docs/api/index.html")
+
+if __name__ == "__main__":
+    main()
+

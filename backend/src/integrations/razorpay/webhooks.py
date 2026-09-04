@@ -76,5 +76,26 @@ class RazorpayWebhookClient:
 
         return response.json()
 
+    async def get_webhook(self, *, account_id: str, webhook_id: str, access_token: str) -> dict:
+        """
+        Fetch the live config (url, active, events, ...) of a webhook already
+        registered on a sub-merchant account - a read-only view, no local cache.
+        """
+        url = f"{self._api_base_url}{WEBHOOKS_PATH_TEMPLATE.format(account_id=account_id)}/{webhook_id}"
+
+        try:
+            async with httpx.AsyncClient(timeout=self._timeout) as client:
+                response = await client.get(url, headers={"Authorization": f"Bearer {access_token}"})
+        except httpx.HTTPError as exc:
+            raise RazorpayWebhookError(f"Razorpay webhook fetch failed: {exc}") from exc
+
+        if response.status_code != httpx.codes.OK:
+            loguru.logger.error(f"Razorpay webhook fetch error [{response.status_code}]: {response.text}")
+            raise RazorpayWebhookError(
+                f"Razorpay webhook endpoint returned {response.status_code}: {response.text}"
+            )
+
+        return response.json()
+
 
 razorpay_webhook_client: RazorpayWebhookClient = RazorpayWebhookClient()

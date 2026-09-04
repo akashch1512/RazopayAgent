@@ -12,8 +12,11 @@ from src.models.schemas.business import (
     BusinessOnboardInitResponse,
     BusinessOnboardRequest,
     BusinessResponse,
+    WebhookConfigResponse,
 )
+from src.models.schemas.recovery_case import RecoveryCaseResponse
 from src.repository.crud.business import BusinessCRUDRepository
+from src.repository.crud.recovery_case import RecoveryCaseCRUDRepository
 from src.utilities.exceptions.database import EntityAlreadyExists, EntityDoesNotExist
 
 router = fastapi.APIRouter(prefix="/onboard-business", tags=["onboarding"])
@@ -117,10 +120,86 @@ async def onboarding_callback(
 
 @router.get(path="/", name="onboarding:list", response_model=list[BusinessResponse])
 async def list_businesses(
+    limit: int = fastapi.Query(default=50, ge=1, le=200),
+    offset: int = fastapi.Query(default=0, ge=0),
     business_repo: BusinessCRUDRepository = fastapi.Depends(get_repository(repo_type=BusinessCRUDRepository)),
 ) -> list[BusinessResponse]:
-    businesses = await business_repo.read_businesses()
+    businesses = await business_repo.read_businesses(limit=limit, offset=offset)
     return [BusinessResponse.model_validate(b) for b in businesses]
+
+
+@router.get(path="/{business_id}", name="onboarding:get-by-id", response_model=BusinessResponse)
+async def get_business(
+    business_id: int,
+    business_repo: BusinessCRUDRepository = fastapi.Depends(get_repository(repo_type=BusinessCRUDRepository)),
+) -> BusinessResponse:
+    try:
+        business = await business_repo.read_business_by_id(business_id=business_id)
+    except EntityDoesNotExist as exc:
+        raise fastapi.HTTPException(status_code=fastapi.status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    return BusinessResponse.model_validate(business)
+
+
+@router.get(
+    path="/{business_id}/recovery-cases",
+    name="onboarding:list-recovery-cases",
+    response_model=list[RecoveryCaseResponse],
+)
+async def list_business_recovery_cases(
+    business_id: int,
+    limit: int = fastapi.Query(default=50, ge=1, le=200),
+    offset: int = fastapi.Query(default=0, ge=0),
+    business_repo: BusinessCRUDRepository = fastapi.Depends(get_repository(repo_type=BusinessCRUDRepository)),
+    case_repo: RecoveryCaseCRUDRepository = fastapi.Depends(
+        get_repository(repo_type=RecoveryCaseCRUDRepository)
+    ),
+) -> list[RecoveryCaseResponse]:
+    """Every merged recovery case for this business, most recently active first."""
+    try:
+        await business_repo.read_business_by_id(business_id=business_id)
+    except EntityDoesNotExist as exc:
+        raise fastapi.HTTPException(status_code=fastapi.status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    cases = await case_repo.list_cases_by_business(business_id=business_id, limit=limit, offset=offset)
+    return [RecoveryCaseResponse.model_validate(case) for case in cases]
+
+
+@router.get(
+    path="/{business_id}/webhooks",
+    name="onboarding:get-webhook-config",
+    response_model=WebhookConfigResponse,
+)
+async def get_business_webhook_config(
+    business_id: int,
+    business_repo: BusinessCRUDRepository = fastapi.Depends(get_repository(repo_type=BusinessCRUDRepository)),
+) -> WebhookConfigResponse:
+    """
+    Live config (url, active, events) of the webhook Razorpay has registered for
+    this business - fetched from Razorpay on every call, not a local cache.
+    """
+    try:
+        business = await business_repo.read_business_by_id(business_id=business_id)
+    except EntityDoesNotExist as exc:
+        raise fastapi.HTTPException(status_code=fastapi.status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    if not business.webhook_id or not business.razorpay_account_id:
+        raise fastapi.HTTPException(
+            status_code=fastapi.status.HTTP_404_NOT_FOUND,
+            detail=f"Business `{business_id}` has no webhook registered yet.",
+        )
+
+    try:
+        access_token = business_repo.get_decrypted_access_token(business)
+        webhook = await razorpay_webhook_client.get_webhook(
+            account_id=business.razorpay_account_id,
+            webhook_id=business.webhook_id,
+            access_token=access_token,
+        )
+    except RazorpayIntegrationError as exc:
+        raise fastapi.HTTPException(status_code=fastapi.status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+
+    return WebhookConfigResponse.model_validate(webhook)
 
 
 @router.post(
