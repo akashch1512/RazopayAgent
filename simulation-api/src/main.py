@@ -35,7 +35,14 @@ app.add_middleware(
 )
 
 API_PREFIX = "/api/v1"
-for router in (call_router, sms_router, whatsapp_router, email_router, app_notification_router, meta_router):
+for router in (
+    call_router,
+    sms_router,
+    whatsapp_router,
+    email_router,
+    app_notification_router,
+    meta_router,
+):
     app.include_router(router, prefix=API_PREFIX)
 
 

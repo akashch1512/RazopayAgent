@@ -15,6 +15,7 @@ retry/backoff/dead-lettering decisions.
 import typing
 
 import loguru
+from langchain_core.tools import BaseTool
 
 from src.agent.audit import CaseActionAuditHandler
 from src.agent.checkpointer import get_checkpointer
@@ -25,6 +26,21 @@ from src.integrations.razorpay.mcp import get_razorpay_mcp_tools
 from src.models.db.business import Business
 from src.models.db.recovery_case import RecoveryCase
 from src.models.db.webhook_event import WebhookEvent
+
+# Outreach-channel tools a business can disable via `AgentSettings.enabled_channels`
+# (see `src.models.schemas.business.AGENT_CHANNELS`). Every other static tool
+# (e.g. `track_payment_status`) is never gated - it isn't a customer channel.
+_CHANNEL_TOOL_NAMES = frozenset(
+    {"make_call", "send_sms", "send_whatsapp_message", "send_app_notification", "send_email", "send_payment_link"}
+)
+
+
+def _filter_tools_for_business(tools: list[BaseTool], business: Business) -> list[BaseTool]:
+    enabled = (business.agent_settings or {}).get("enabled_channels")
+    if not enabled:
+        return tools
+    allowed = set(enabled)
+    return [tool for tool in tools if tool.name not in _CHANNEL_TOOL_NAMES or tool.name in allowed]
 
 
 async def run_recovery_agent(
@@ -37,7 +53,7 @@ async def run_recovery_agent(
     starting cold.
     """
     mcp_tools = await get_razorpay_mcp_tools(business)
-    tools = [*STATIC_TOOLS, *mcp_tools]
+    tools = _filter_tools_for_business([*STATIC_TOOLS, *mcp_tools], business)
 
     initial_state = build_case_context(case=case, history=history, business=business)
 

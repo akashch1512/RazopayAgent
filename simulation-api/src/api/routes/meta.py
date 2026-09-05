@@ -8,6 +8,7 @@ in practice, the real backend's `RecoveryCase.id`.
 import fastapi
 
 from src import store
+from src.backend_client import forward_customer_feedback
 from src.schemas import DashboardResponse, PayRequest, ReplyRequest
 
 router = fastapi.APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -30,10 +31,20 @@ async def get_user_dashboard(user_id: str) -> DashboardResponse:
 
 @router.post("/users/{user_id}/messages", response_model=DashboardResponse)
 async def post_dashboard_message(user_id: str, payload: ReplyRequest) -> DashboardResponse:
-    """Simulates the *customer* replying on `payload.channel`."""
+    """
+    Simulates the *customer* replying on `payload.channel` - updates the local
+    demo store (so the dashboard reflects it immediately) and forwards the
+    reply to the real backend so the agent actually gets to act on it:
+
+        reply -> this endpoint -> POST backend /recovery-cases/{id}/feedback
+              -> case re-queued -> agent sees the reply + case history next run
+    """
     communication = store.record_customer_reply(case_id=user_id, channel=payload.channel, message=payload.message)
     if communication is None:
         raise _not_found(user_id)
+
+    await forward_customer_feedback(case_id=user_id, channel=payload.channel, message=payload.message)
+
     case = store.get_case(user_id)
     assert case is not None  # record_customer_reply only returns non-None if the case exists
     return DashboardResponse(recovery_case=case, metrics=store.metrics())

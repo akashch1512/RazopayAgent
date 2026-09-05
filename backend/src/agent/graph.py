@@ -20,8 +20,17 @@ from src.agent.state import RecoveryAgentState
 def build_recovery_agent(
     *, tools: list[BaseTool], checkpointer: BaseCheckpointSaver
 ) -> CompiledStateGraph:
+    # Bind tools ourselves (with `parallel_tool_calls=True`) rather than
+    # handing `create_react_agent` the raw model - it only binds tools itself
+    # when the model isn't already bound to the same tool set, so this is
+    # respected, not overridden. `ToolNode` (which `create_react_agent` wires
+    # up internally) already executes every tool call in one turn concurrently
+    # via `asyncio.gather` - the only thing missing was letting the model
+    # *choose* more than one at a time.
+    model = get_chat_model().bind_tools(tools, parallel_tool_calls=True)
+
     return create_react_agent(
-        model=get_chat_model(),
+        model=model,
         tools=tools,
         state_schema=RecoveryAgentState,
         checkpointer=checkpointer,

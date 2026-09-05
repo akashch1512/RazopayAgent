@@ -35,8 +35,49 @@ class BusinessResponse(BaseSchemaModel):
     token_scope: str | None
     token_expires_at: datetime.datetime | None
     webhook_id: str | None
+    agent_settings: dict
     created_at: datetime.datetime
     updated_at: datetime.datetime | None
+
+
+# Every channel tool name the agent could be restricted to - kept here (not
+# imported from `src.agent.tools`) so this schema module has no dependency on
+# the agent package.
+AGENT_CHANNELS: tuple[str, ...] = (
+    "make_call",
+    "send_sms",
+    "send_whatsapp_message",
+    "send_app_notification",
+    "send_email",
+    "send_payment_link",
+)
+
+
+class AgentSettings(BaseSchemaModel):
+    """
+    A business' customization of how its agent behaves - read directly by
+    `src.agent.context` (folded into the system prompt) and `src.agent.runner`
+    (which tools it's allowed to use). An empty/default instance means "use
+    the built-in defaults", not "nothing is allowed".
+    """
+
+    business_description: str | None = pydantic.Field(default=None, max_length=1000)
+    tone: str = pydantic.Field(default="friendly and professional", max_length=200)
+    custom_instructions: str | None = pydantic.Field(default=None, max_length=2000)
+    # `None` = every channel tool is allowed (the default). An empty list
+    # would disable all outreach, which is almost certainly a mistake, so it's
+    # only reachable by explicitly listing zero channels, not by omission.
+    enabled_channels: list[str] | None = None
+
+    @pydantic.field_validator("enabled_channels")
+    @classmethod
+    def _validate_channels(cls, value: list[str] | None) -> list[str] | None:
+        if value is None:
+            return None
+        unknown = set(value) - set(AGENT_CHANNELS)
+        if unknown:
+            raise ValueError(f"Unknown channel(s) {sorted(unknown)}; expected one of {AGENT_CHANNELS}")
+        return value
 
 
 class WebhookConfigResponse(pydantic.BaseModel):
@@ -49,6 +90,34 @@ class WebhookConfigResponse(pydantic.BaseModel):
     alert_email: str | None = None
     secret_exists: bool | None = None
     created_at: int | None = None
+
+
+class InvoiceCustomerDetails(pydantic.BaseModel):
+    name: str | None = None
+    email: str | None = None
+    contact: str | None = None
+
+
+class InvoiceResponse(pydantic.BaseModel):
+    """A subset of Razorpay's invoice object - just what the dashboard needs
+    to list invoices and let a human start a B2B chase on one."""
+
+    id: str
+    status: str
+    invoice_number: str | None = None
+    amount: int
+    amount_paid: int = 0
+    amount_due: int = 0
+    currency: str = "INR"
+    short_url: str | None = None
+    customer_details: InvoiceCustomerDetails = pydantic.Field(default_factory=InvoiceCustomerDetails)
+    created_at: int | None = None
+
+
+class StartInvoiceChaseRequest(BaseSchemaModel):
+    """Optional overrides when a human kicks off a B2B chase for one invoice."""
+
+    reason: str | None = pydantic.Field(default=None, max_length=500)
 
 
 class RazorpayTokenResponse(pydantic.BaseModel):

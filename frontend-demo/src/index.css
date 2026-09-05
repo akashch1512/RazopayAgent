@@ -1,3 +1,67 @@
+@import 'tailwindcss';
+
+/* ── Shared motion primitives - used across the business dashboard ── */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: -200% 0;
+  }
+  to {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.animate-fade-in {
+  animation: fade-in 0.35s ease both;
+}
+.animate-pop-in {
+  animation: pop-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.skeleton {
+  background: linear-gradient(90deg, #eef0ef 25%, #f7f8f7 37%, #eef0ef 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease infinite;
+}
+/* Stagger children of a list with `.stagger-list` by giving each item this
+   class and reading `--stagger-index` (set inline as `style={{ '--i': i }}`). */
+.stagger-item {
+  animation: fade-in-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+
 :root {
   --text: #6b6375;
   --text-h: #08060d;

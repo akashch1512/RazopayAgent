@@ -2,9 +2,11 @@ import fastapi
 import loguru
 
 from src.api.dependencies.repository import get_repository
+from src.integrations.razorpay.ingestion import dispatch_case_if_needed, record_customer_feedback
 from src.models.db.recovery_case import RecoveryCaseStatus
 from src.models.schemas.recovery_case import (
     CaseActionResponse,
+    CustomerFeedbackRequest,
     RecoveryCaseDetailResponse,
     RecoveryCaseResponse,
     WebhookEventResponse,
@@ -82,6 +84,51 @@ async def get_recovery_case(
         history=[WebhookEventResponse.model_validate(event) for event in history],
         actions=[CaseActionResponse.model_validate(action) for action in actions],
     )
+
+
+@router.post(
+    path="/{case_id}/feedback",
+    name="recovery-cases:feedback",
+    status_code=fastapi.status.HTTP_200_OK,
+)
+async def submit_customer_feedback(
+    case_id: int,
+    payload: CustomerFeedbackRequest,
+    case_repo: RecoveryCaseCRUDRepository = fastapi.Depends(
+        get_repository(repo_type=RecoveryCaseCRUDRepository)
+    ),
+    webhook_repo: WebhookEventCRUDRepository = fastapi.Depends(
+        get_repository(repo_type=WebhookEventCRUDRepository)
+    ),
+) -> dict[str, str]:
+    """
+    A customer replied on some channel (today: the demo dashboard, via
+    `simulation-api`) - merge it into the case's history and re-dispatch the
+    agent with that feedback in context.
+
+        feedback -> case merged/queued -> dequeued -> agent gets context + the
+        reply -> acts on it (replies again, escalates, sends a payment link, ...)
+
+    Reuses the exact same merge/priority/dispatch pipeline as a real webhook
+    (`src.integrations.razorpay.ingestion`) - a reply is just another event.
+    """
+    try:
+        case = await case_repo.read_case_by_id(case_id=case_id)
+    except EntityDoesNotExist as exc:
+        raise fastapi.HTTPException(status_code=fastapi.status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    case, event = await record_customer_feedback(
+        case_repo=case_repo,
+        webhook_repo=webhook_repo,
+        case=case,
+        channel=payload.channel,
+        message=payload.message,
+    )
+    if event is None:
+        return {"status": "duplicate", "case_id": str(case.id)}
+
+    status = await dispatch_case_if_needed(case_repo=case_repo, case=case, is_new=False, is_resolving=False)
+    return {"status": status, "case_id": str(case.id)}
 
 
 @router.post(

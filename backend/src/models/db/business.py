@@ -1,6 +1,7 @@
 import datetime
 
 import sqlalchemy
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped as SQLAlchemyMapped
 from sqlalchemy.orm import mapped_column as sqlalchemy_mapped_column
 from sqlalchemy.sql import functions as sqlalchemy_functions
@@ -65,6 +66,21 @@ class Business(Base):  # type: ignore
     encrypted_webhook_secret: SQLAlchemyMapped[str | None] = sqlalchemy_mapped_column(
         sqlalchemy.Text, nullable=True
     )
+
+    # Drop-off poll rotation (Razorpay has no drop-off webhook - see
+    # src.workers.tasks.dropoff_detection). Acts as a circular queue: whichever
+    # ACTIVE business has the oldest/earliest `next_dropoff_poll_at` goes next.
+    next_dropoff_poll_at: SQLAlchemyMapped[datetime.datetime | None] = sqlalchemy_mapped_column(
+        sqlalchemy.DateTime(timezone=True), nullable=True, index=True
+    )
+    last_dropoff_poll_at: SQLAlchemyMapped[datetime.datetime | None] = sqlalchemy_mapped_column(
+        sqlalchemy.DateTime(timezone=True), nullable=True
+    )
+
+    # Business-customized agent behaviour - see `src.models.schemas.business.AgentSettings`.
+    # Read directly by `src.agent.context`/`src.agent.runner`; an empty dict
+    # means "use the defaults", not "unconfigured".
+    agent_settings: SQLAlchemyMapped[dict] = sqlalchemy_mapped_column(JSONB, nullable=False, server_default="{}")
 
     created_at: SQLAlchemyMapped[datetime.datetime] = sqlalchemy_mapped_column(
         sqlalchemy.DateTime(timezone=True), nullable=False, server_default=sqlalchemy_functions.now()

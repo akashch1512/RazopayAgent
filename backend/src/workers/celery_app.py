@@ -31,6 +31,7 @@ celery_app = Celery(
     include=[
         "src.workers.tasks.recovery_cases",
         "src.workers.tasks.reconciliation",
+        "src.workers.tasks.dropoff_detection",
     ],
 )
 
@@ -69,6 +70,11 @@ celery_app.conf.update(
             "task": names.RECOVERY_CASE_RECONCILE_TASK,
             "schedule": float(settings.WEBHOOK_RECONCILE_INTERVAL_SECONDS),
             "options": {"queue": settings.WEBHOOK_QUEUE_NAME, "priority": 0},
+        },
+        "dropoff-poll-businesses": {
+            "task": names.DROPOFF_POLL_BUSINESSES_TASK,
+            "schedule": float(settings.DROPOFF_SWEEP_INTERVAL_SECONDS),
+            "options": {"queue": settings.WEBHOOK_QUEUE_NAME, "priority": 3},
         },
     },
 )

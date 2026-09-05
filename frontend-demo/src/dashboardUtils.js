@@ -14,6 +14,7 @@ export const channelColor = {
   whatsapp: '#25D366',
   sms: '#007AFF',
   email: '#EA4335',
+  payment_link: '#7c3aed',
 }
 
 export function formatDate(value) {

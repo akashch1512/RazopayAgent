@@ -16,6 +16,8 @@ WEBHOOK_EVENTS: list[str] = [
     "subscription.pending", 
     "subscription.halted", 
     "payment.failed",
+
+    
 ]
 
 # Razorpay OAuth endpoints (paths are joined onto the configured base URLs).

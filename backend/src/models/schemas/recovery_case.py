@@ -1,5 +1,7 @@
 import datetime
 
+import pydantic
+
 from src.models.schemas.base import BaseSchemaModel
 
 
@@ -50,6 +52,27 @@ class CaseActionResponse(BaseSchemaModel):
     tool_input: dict
     tool_output: str | None
     created_at: datetime.datetime
+
+
+class CustomerFeedbackRequest(BaseSchemaModel):
+    """A customer's reply on some channel - from the demo dashboard today, a
+    real inbound channel eventually. See `POST /recovery-cases/{id}/feedback`."""
+
+    channel: str
+    message: str = pydantic.Field(..., min_length=1)
+
+
+class ManualRecoveryRequest(BaseSchemaModel):
+    """A human explicitly asking the agent to chase a specific order/invoice -
+    "start custom recovery" on the dashboard. See
+    `POST /onboard-business/{id}/recovery-cases/start`."""
+
+    order_reference: str = pydantic.Field(..., min_length=1, max_length=191)
+    customer_email: pydantic.EmailStr | None = None
+    customer_contact: str | None = pydantic.Field(default=None, max_length=32)
+    amount: int | None = pydantic.Field(default=None, ge=0)
+    currency: str = pydantic.Field(default="INR", max_length=10)
+    reason: str = pydantic.Field(..., min_length=1, max_length=500)
 
 
 class RecoveryCaseDetailResponse(RecoveryCaseResponse):

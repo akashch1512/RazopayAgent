@@ -23,6 +23,13 @@ _CRITICAL_EVENTS: frozenset[str] = frozenset(
         "payout.rejected",
         "refund.failed",
         "subscription.halted",
+        # A customer replying is the moment they're most engaged - strike
+        # while the iron is hot rather than letting it sit in the queue.
+        "customer.feedback",
+        # A human explicitly asked for this - see
+        # src.integrations.razorpay.ingestion.start_manual_case.
+        "manual.recovery",
+        "invoice.b2b_chase",
     }
 )
 
@@ -35,6 +42,9 @@ _HIGH_EVENTS: frozenset[str] = frozenset(
         "invoice.expired",
         "order.paid",
         "refund.created",
+        # Synthesized by the drop-off poller, not a real Razorpay webhook -
+        # see src.workers.tasks.dropoff_detection.
+        "order.dropoff",
     }
 )
 

@@ -8,3 +8,4 @@ are effectively a wire contract with the broker.
 
 RECOVERY_CASE_PROCESS_TASK = "recovery.process_case"
 RECOVERY_CASE_RECONCILE_TASK = "recovery.reconcile"
+DROPOFF_POLL_BUSINESSES_TASK = "dropoff.poll_businesses"

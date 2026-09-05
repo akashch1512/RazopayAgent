@@ -34,6 +34,13 @@ _GENERIC_ENTITY_FIELDS: tuple[str, ...] = (
     "error_code",
     "error_description",
     "error_reason",
+    # Present on synthetic `customer.feedback` events (see
+    # `src.integrations.razorpay.ingestion`) - what the customer actually said.
+    "channel",
+    "message",
+    # Present on synthetic `manual.recovery`/`invoice.b2b_chase` events - why a
+    # human asked for this case specifically.
+    "reason",
 )
 
 _SYSTEM_PROMPT_TEMPLATE = """\
@@ -41,12 +48,12 @@ You are a payment-recovery assistant working on behalf of "{business_name}", a \
 business using Razorpay. Your job is to study one recovery case (a payment, \
 subscription, payout, or similar problem a customer is having) and take the \
 best action(s) to recover it - or to confirm none are needed.
-
-You have tools to reach the customer directly (call, SMS, WhatsApp, app \
-notification, email) and tools to inspect/act on Razorpay itself (via the \
-Razorpay MCP server, if connected for this business). Some tools are still \
-placeholders that log what they *would* do instead of really doing it - treat \
-their result as a plan, not a confirmed action, when they say so explicitly.
+{business_customization}
+You have tools to reach the customer directly ({available_channels}) and tools \
+to inspect/act on Razorpay itself (via the Razorpay MCP server, if connected \
+for this business). Some tools are still placeholders that log what they \
+*would* do instead of really doing it - treat their result as a plan, not a \
+confirmed action, when they say so explicitly.
 
 The customer's local time right now is {local_time} ({timezone}). Do not \
 suggest or place calls/notifications outside a reasonable local daytime window \
@@ -54,14 +61,62 @@ suggest or place calls/notifications outside a reasonable local daytime window \
 
 Guidelines:
 - Check the case history below before acting - if the customer already \
-  resolved this or you already reached out recently, don't repeat yourself.
+  resolved this or you already reached out recently, don't repeat yourself. A \
+  `customer.feedback` entry is the customer's own reply - read it carefully \
+  and respond to what they actually said (a question, an objection, a "yes") \
+  rather than repeating your last message.
 - Prefer the least intrusive effective channel first (e.g. WhatsApp/SMS before \
   a phone call), escalating only if warranted by priority or repeated failures.
+- If a payment link would make it easier for the customer to actually pay \
+  (rather than just being told about the problem again), use the \
+  `send_payment_link` tool to send one - it writes and sends the whole \
+  message itself, real link included. Never write a message yourself that \
+  mentions "the payment link" or a placeholder like "[Payment Link]" - you \
+  don't know its URL, only that tool does; a message you write yourself would \
+  reach the customer with no working link at all.
 - Be concise and factual when drafting messages to the customer; no invented \
   details (amounts, dates, reasons) beyond what the case data provides.
 - If nothing useful can be done right now, say so plainly instead of taking a \
   low-value action just to do something.
 """
+
+
+# Tool function name -> how to describe it to the LLM in prose. Kept here
+# (not imported from `src.agent.tools`) so a channel can be described even if
+# disabled and therefore not in the bound tool list.
+_CHANNEL_DESCRIPTIONS: dict[str, str] = {
+    "make_call": "call",
+    "send_sms": "SMS",
+    "send_whatsapp_message": "WhatsApp",
+    "send_app_notification": "app notification",
+    "send_email": "email",
+    "send_payment_link": "a one-click payment link",
+}
+
+
+def _describe_available_channels(business: Business) -> str:
+    enabled = (business.agent_settings or {}).get("enabled_channels")
+    names = enabled if enabled else list(_CHANNEL_DESCRIPTIONS)
+    return ", ".join(_CHANNEL_DESCRIPTIONS.get(name, name) for name in names)
+
+
+def _business_customization_block(business: Business) -> str:
+    """Folds a business' `agent_settings` (see `src.models.schemas.business.
+    AgentSettings`) into the prompt - the dashboard's "customize agent" form
+    actually changes agent behaviour, not just cosmetic settings."""
+    settings = business.agent_settings or {}
+    tone = settings.get("tone") or "friendly and professional"
+    lines = [f"\nRespond to the customer in a {tone} tone."]
+
+    description = settings.get("business_description")
+    if description:
+        lines.append(f"About this business: {description}")
+
+    custom_instructions = settings.get("custom_instructions")
+    if custom_instructions:
+        lines.append(f"Business-specific instructions - follow these: {custom_instructions}")
+
+    return "\n".join(lines) + "\n"
 
 
 def _local_time_string(timezone_name: str) -> str:
@@ -109,6 +164,8 @@ def build_case_context(
 
     system_prompt = _SYSTEM_PROMPT_TEMPLATE.format(
         business_name=business.name,
+        business_customization=_business_customization_block(business),
+        available_channels=_describe_available_channels(business),
         local_time=_local_time_string(timezone_name),
         timezone=timezone_name,
     )

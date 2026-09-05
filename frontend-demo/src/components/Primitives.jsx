@@ -21,7 +21,9 @@ export function StatusDot({ status }) {
         background: color,
         boxShadow: `0 0 0 3px ${color}33`,
         flexShrink: 0,
+        transition: 'background 0.3s ease, box-shadow 0.3s ease',
       }}
+      className={status === 'processing' ? 'animate-pulse' : ''}
     />
   )
 }
@@ -29,6 +31,7 @@ export function StatusDot({ status }) {
 export function Message({ item }) {
   return (
     <div
+      className="animate-fade-in-up"
       style={{
         alignSelf: 'flex-start',
         maxWidth: '80%',
@@ -67,6 +70,7 @@ export function Message({ item }) {
       </div>
       {item.customer_response && (
         <div
+          className="animate-pop-in"
           style={{
             marginTop: 8,
             padding: '7px 9px',

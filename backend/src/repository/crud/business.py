@@ -49,6 +49,13 @@ class BusinessCRUDRepository(BaseCRUDRepository):
             raise EntityDoesNotExist("No onboarding session matches the provided `state`!")
         return business
 
+    async def read_business_by_reference_id(self, reference_id: str) -> Business:
+        stmt = sqlalchemy.select(Business).where(Business.reference_id == reference_id)
+        business = (await self.async_session.execute(stmt)).scalar_one_or_none()
+        if business is None:
+            raise EntityDoesNotExist(f"No business found for reference_id `{reference_id}`!")
+        return business
+
     async def read_businesses(self, *, limit: int = 50, offset: int = 0) -> typing.Sequence[Business]:
         stmt = sqlalchemy.select(Business).order_by(Business.id).limit(limit).offset(offset)
         return (await self.async_session.execute(stmt)).scalars().all()
@@ -87,10 +94,62 @@ class BusinessCRUDRepository(BaseCRUDRepository):
         business.encrypted_webhook_secret = encryptor.encrypt(webhook_secret)
         business.status = "ACTIVE"
         business.updated_at = sqlalchemy_functions.now()  # type: ignore[assignment]
+        # Join the drop-off poll rotation immediately - see
+        # src.workers.tasks.dropoff_detection.
+        business.next_dropoff_poll_at = sqlalchemy_functions.now()  # type: ignore[assignment]
 
         await self.async_session.commit()
         await self.async_session.refresh(instance=business)
         return business
+
+    async def list_due_for_dropoff_poll(
+        self, *, now: datetime.datetime, limit: int
+    ) -> typing.Sequence[Business]:
+        """
+        The drop-off poller's "circular queue": ACTIVE businesses due for their
+        turn, oldest-due first, batch-limited so one sweep never calls the
+        Orders API for every business at once.
+        """
+        stmt = (
+            sqlalchemy.select(Business)
+            .where(
+                Business.status == "ACTIVE",
+                Business.razorpay_account_id.is_not(None),
+                sqlalchemy.or_(
+                    Business.next_dropoff_poll_at.is_(None),
+                    Business.next_dropoff_poll_at <= now,
+                ),
+            )
+            .order_by(sqlalchemy.func.coalesce(Business.next_dropoff_poll_at, Business.created_at).asc())
+            .limit(limit)
+            .with_for_update(skip_locked=True)
+        )
+        return (await self.async_session.execute(stmt)).scalars().all()
+
+    async def mark_dropoff_polled(
+        self, *, business_id: int, polled_at: datetime.datetime, next_poll_at: datetime.datetime
+    ) -> None:
+        """Push this business to the back of the rotation."""
+        stmt = (
+            sqlalchemy.update(Business)
+            .where(Business.id == business_id)
+            .values(last_dropoff_poll_at=polled_at, next_dropoff_poll_at=next_poll_at)
+        )
+        await self.async_session.execute(stmt)
+        await self.async_session.commit()
+
+    async def update_agent_settings(self, *, business_id: int, agent_settings: dict) -> Business:
+        stmt = (
+            sqlalchemy.update(Business)
+            .where(Business.id == business_id)
+            .values(agent_settings=agent_settings, updated_at=sqlalchemy_functions.now())
+            .returning(Business)
+        )
+        row = (await self.async_session.execute(stmt)).scalar_one_or_none()
+        await self.async_session.commit()
+        if row is None:
+            raise EntityDoesNotExist(f"Business with id `{business_id}` does not exist!")
+        return row
 
     def get_decrypted_access_token(self, business: Business) -> str:
         if not business.encrypted_access_token:

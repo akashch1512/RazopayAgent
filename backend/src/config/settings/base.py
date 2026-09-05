@@ -29,12 +29,12 @@ class BackendBaseSettings(BaseSettings):
     REDOC_URL: str = "/redoc"
     OPENAPI_PREFIX: str = ""
 
-    DB_POSTGRES_HOST: str = "localhost"
-    DB_POSTGRES_NAME: str = "postgres"
-    DB_POSTGRES_PASSWORD: str = "postgres"
-    DB_POSTGRES_PORT: int = 5432
-    DB_POSTGRES_SCHEMA: str = "postgresql+asyncpg"
-    DB_POSTGRES_USERNAME: str = "postgres"
+    POSTGRES_HOST: str = "localhost"
+    POSTGRES_NAME: str = "postgres"
+    POSTGRES_PASSWORD: str = "postgres"
+    POSTGRES_PORT: int = 5432
+    POSTGRES_SCHEMA: str = "postgresql+asyncpg"
+    POSTGRES_USERNAME: str = "postgres"
     DB_POOL_SIZE: int = 10
     DB_POOL_OVERFLOW: int = 20
     DB_TIMEOUT: int = 5
@@ -55,9 +55,9 @@ class BackendBaseSettings(BaseSettings):
     @property
     def DATABASE_URL(self) -> str:
         return (
-            f"{self.DB_POSTGRES_SCHEMA}://{self.DB_POSTGRES_USERNAME}:"
-            f"{self.DB_POSTGRES_PASSWORD}@{self.DB_POSTGRES_HOST}:"
-            f"{self.DB_POSTGRES_PORT}/{self.DB_POSTGRES_NAME}"
+            f"{self.POSTGRES_SCHEMA}://{self.POSTGRES_USERNAME}:"
+            f"{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:"
+            f"{self.POSTGRES_PORT}/{self.POSTGRES_NAME}"
         )
 
     @property
@@ -164,6 +164,10 @@ class BackendBaseSettings(BaseSettings):
     SIMULATION_API_BASE_URL: str = "http://localhost:8001/api/v1"
     SIMULATION_API_TIMEOUT_SECONDS: int = 10
 
+    # The business dashboard (frontend-demo) - the OAuth callback redirects
+    # here to finish onboarding instead of dead-ending in raw JSON.
+    FRONTEND_BASE_URL: str = "http://localhost:5173"
+
     # Razorpay MCP server - https://razorpay.com/docs/mcp-server/
     RAZORPAY_MCP_SERVER_URL: str = "https://mcp.razorpay.com/mcp"
     RAZORPAY_MCP_TRANSPORT: str = "streamable_http"
@@ -175,12 +179,31 @@ class BackendBaseSettings(BaseSettings):
     RAZORPAY_KEY_ID: str | None = None
     RAZORPAY_KEY_SECRET: str | None = None
 
+    # --- Drop-off detection ---
+    # Razorpay has no `order.created` (or any drop-off) webhook, so the only
+    # way to notice "customer started checkout, never paid" is to poll
+    # `GET /v1/orders` per business. Businesses are polled one at a time on a
+    # rotation (`Business.next_dropoff_poll_at`), not all at once.
+    # How often the beat schedule checks "which businesses are due".
+    DROPOFF_SWEEP_INTERVAL_SECONDS: int = 60
+    # How long a business waits before its next poll turn, once polled.
+    DROPOFF_POLL_INTERVAL_SECONDS: int = 900
+    DROPOFF_POLL_JITTER_SECONDS: int = 60
+    # An order unpaid for at least this long counts as a drop-off.
+    DROPOFF_THRESHOLD_SECONDS: int = 900
+    # The Orders API `from` window - must comfortably exceed
+    # POLL_INTERVAL + THRESHOLD so a slow poll cycle never skips an order.
+    DROPOFF_LOOKBACK_SECONDS: int = 3600
+    # Safety caps: how many businesses per sweep tick, how many orders per business.
+    DROPOFF_POLL_BATCH_SIZE: int = 20
+    DROPOFF_MAX_ORDERS_PER_BUSINESS: int = 500
+
     @property
     def CHECKPOINTER_DATABASE_URL(self) -> str:
         """Plain `postgresql://` DSN for psycopg (`DATABASE_URL` uses the `+asyncpg` driver)."""
         return (
-            f"postgresql://{self.DB_POSTGRES_USERNAME}:{self.DB_POSTGRES_PASSWORD}@"
-            f"{self.DB_POSTGRES_HOST}:{self.DB_POSTGRES_PORT}/{self.DB_POSTGRES_NAME}"
+            f"postgresql://{self.POSTGRES_USERNAME}:{self.POSTGRES_PASSWORD}@"
+            f"{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_NAME}"
         )
 
     @property
