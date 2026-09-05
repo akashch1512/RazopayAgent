@@ -436,7 +436,7 @@ async function renderDashboard(message) {
 
     <div class="card">
       <div class="card-title-row">
-        <div class="card-title">Recovery Cases (${cases.length})</div>
+        <div class="card-title">Recovery Cases (${cases.length}) [Case Waits 15 Minute so Customer Can Try on Their Side First]</div>
         <button id="refresh-cases-btn" title="Refresh">Refresh</button>
       </div>
       ${
