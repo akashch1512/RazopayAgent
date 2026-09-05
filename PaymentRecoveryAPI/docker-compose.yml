@@ -1,7 +1,8 @@
 name: payment-recovery-api
 
-# Self-contained deployment of the Payment Recovery API: the FastAPI server, the
-# Celery agent worker, the Celery beat scheduler and their Redis broker.
+# Self-contained deployment of the Payment Recovery API. A single container runs
+# Redis, the Celery agent worker, the Celery beat scheduler and the FastAPI
+# server (entrypoint.sh starts Redis + Celery, then execs uvicorn).
 #
 # PostgreSQL is NOT started here - it is expected to run outside this stack.
 # Point the app at it through .env:
@@ -9,41 +10,20 @@ name: payment-recovery-api
 #   * Postgres on this same machine (host network) -> POSTGRES_HOST=host.docker.internal
 #     (the `host-gateway` alias below makes that resolvable on Linux too)
 
-x-app: &app
-  build:
-    context: .
-  image: payment-recovery-api:latest
-  env_file:
-    - .env
-  environment:
-    # Redis lives in this stack; always reachable at this address.
-    REDIS_HOST: redis
-    REDIS_PORT: "6379"
-  extra_hosts:
-    - "host.docker.internal:host-gateway"
-  depends_on:
-    redis:
-      condition: service_healthy
-  restart: unless-stopped
-
 services:
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    command: ["redis-server", "--save", "60", "1", "--appendonly", "yes"]
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-    # Uncomment to inspect the broker from the host.
-    # ports:
-    #   - "127.0.0.1:6379:6379"
-
   api:
-    <<: *app
+    build:
+      context: .
+    image: payment-recovery-api:latest
+    env_file:
+      - .env
+    environment:
+      # Redis runs inside this same container.
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: "6379"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
     command:
       - uvicorn
       - src.main:backend_app
@@ -51,6 +31,8 @@ services:
       - --port=8000
     ports:
       - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - redis_data:/data
     healthcheck:
       test:
         - CMD
@@ -63,33 +45,6 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
-
-  # Agent worker: drains the priority queue by case_id. Each case is claimed by
-  # exactly one worker (see `RecoveryCaseCRUDRepository.claim_for_processing`),
-  # so it scales safely across replicas / higher concurrency - tune with
-  # CELERY_WORKER_CONCURRENCY in .env.
-  worker:
-    <<: *app
-    command:
-      - celery
-      - -A
-      - src.workers.celery_app.celery_app
-      - worker
-      - --queues=webhook_agent
-      - --concurrency=${CELERY_WORKER_CONCURRENCY:-4}
-      - --prefetch-multiplier=1
-      - --loglevel=info
-
-  # Beat: fires the reconciler (anti-starvation + lost-message recovery), the
-  # drop-off poller and the scheduled-outreach sweep.
-  beat:
-    <<: *app
-    command:
-      - celery
-      - -A
-      - src.workers.celery_app.celery_app
-      - beat
-      - --loglevel=info
 
 volumes:
   redis_data:

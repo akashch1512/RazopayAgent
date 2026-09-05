@@ -24,18 +24,8 @@ services:
       db:
         condition: service_healthy
 
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    command: ["redis-server", "--save", "60", "1", "--appendonly", "yes"]
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-
+  # Redis, the Celery worker and Celery beat all run inside this same container
+  # (see PaymentRecoveryAPI/entrypoint.sh), started before uvicorn.
   api:
     restart: unless-stopped
     build:
@@ -44,17 +34,16 @@ services:
       - .env
     environment:
       POSTGRES_HOST: db
-      REDIS_HOST: redis
+      REDIS_HOST: 127.0.0.1
       SIMULATION_API_BASE_URL: http://simulation_api:8001/api/v1
       FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:5173}
     volumes:
       - ./PaymentRecoveryAPI:/usr/backend
+      - redis_data:/data
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     depends_on:
       db:
-        condition: service_healthy
-      redis:
         condition: service_healthy
 
   simulation_api:
@@ -63,64 +52,6 @@ services:
       context: ./demo/simulation_api
     ports:
       - "${SIMULATION_API_PORT:-8001}:8001"
-
-  # Agent worker: drains the priority queue by case_id. Each case is claimed by
-  # exactly one worker (see `claim_for_processing`), so this scales safely
-  # across parallel workers - set CELERY_WORKER_CONCURRENCY in .env (default 4).
-  celery_worker:
-    restart: unless-stopped
-    build:
-      context: ./PaymentRecoveryAPI
-    env_file:
-      - .env
-    environment:
-      REDIS_HOST: redis
-      POSTGRES_HOST: db
-      SIMULATION_API_BASE_URL: http://simulation_api:8001/api/v1
-    volumes:
-      - ./PaymentRecoveryAPI:/usr/backend
-    entrypoint: []
-    command:
-      - /usr/backend/.venv/bin/celery
-      - -A
-      - src.workers.celery_app.celery_app
-      - worker
-      - --queues=webhook_agent
-      - --concurrency=${CELERY_WORKER_CONCURRENCY:-4}
-      - --prefetch-multiplier=1
-      - --loglevel=info
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      simulation_api:
-        condition: service_started
-
-  # Beat: fires the reconciler (anti-starvation + lost-message recovery).
-  celery_beat:
-    restart: unless-stopped
-    build:
-      context: ./PaymentRecoveryAPI
-    env_file:
-      - .env
-    environment:
-      REDIS_HOST: redis
-      POSTGRES_HOST: db
-    volumes:
-      - ./PaymentRecoveryAPI:/usr/backend
-    entrypoint: []
-    command:
-      - /usr/backend/.venv/bin/celery
-      - -A
-      - src.workers.celery_app.celery_app
-      - beat
-      - --loglevel=info
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
 
   frontend:
     restart: unless-stopped
