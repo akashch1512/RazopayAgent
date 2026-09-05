@@ -1,0 +1,95 @@
+name: payment-recovery-api
+
+# Self-contained deployment of the Payment Recovery API: the FastAPI server, the
+# Celery agent worker, the Celery beat scheduler and their Redis broker.
+#
+# PostgreSQL is NOT started here - it is expected to run outside this stack.
+# Point the app at it through .env:
+#   * managed / remote Postgres -> POSTGRES_HOST=<its hostname>
+#   * Postgres on this same machine (host network) -> POSTGRES_HOST=host.docker.internal
+#     (the `host-gateway` alias below makes that resolvable on Linux too)
+
+x-app: &app
+  build:
+    context: .
+  image: payment-recovery-api:latest
+  env_file:
+    - .env
+  environment:
+    # Redis lives in this stack; always reachable at this address.
+    REDIS_HOST: redis
+    REDIS_PORT: "6379"
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  depends_on:
+    redis:
+      condition: service_healthy
+  restart: unless-stopped
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "60", "1", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    # Uncomment to inspect the broker from the host.
+    # ports:
+    #   - "127.0.0.1:6379:6379"
+
+  api:
+    <<: *app
+    command:
+      - uvicorn
+      - src.main:backend_app
+      - --host=0.0.0.0
+      - --port=8000
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import sys, urllib.request;
+          sys.exit(0 if urllib.request.urlopen("http://localhost:8000/api/health").status == 200 else 1)
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # Agent worker: drains the priority queue by case_id. Each case is claimed by
+  # exactly one worker (see `RecoveryCaseCRUDRepository.claim_for_processing`),
+  # so it scales safely across replicas / higher concurrency - tune with
+  # CELERY_WORKER_CONCURRENCY in .env.
+  worker:
+    <<: *app
+    command:
+      - celery
+      - -A
+      - src.workers.celery_app.celery_app
+      - worker
+      - --queues=webhook_agent
+      - --concurrency=${CELERY_WORKER_CONCURRENCY:-4}
+      - --prefetch-multiplier=1
+      - --loglevel=info
+
+  # Beat: fires the reconciler (anti-starvation + lost-message recovery), the
+  # drop-off poller and the scheduled-outreach sweep.
+  beat:
+    <<: *app
+    command:
+      - celery
+      - -A
+      - src.workers.celery_app.celery_app
+      - beat
+      - --loglevel=info
+
+volumes:
+  redis_data:
