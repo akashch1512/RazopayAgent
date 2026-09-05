@@ -1,120 +1,87 @@
-version: '3.9'
-
 services:
   db:
-    image: postgres:latest
-    container_name: db
-    restart: always
+    image: postgres:16-alpine
+    restart: unless-stopped
     environment:
-      - POSTGRES_USER=${POSTGRES_USERNAME}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-      - PGDATA=/var/lib/postgresql/data/
+      POSTGRES_USER: ${POSTGRES_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_NAME:-razopay_agent}
+      PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - postgresql_db_data:/var/lib/postgresql/data/
-    expose:
-      - 5432
-    ports:
-      - 5433:5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   db_editor:
-    image: adminer
-    container_name: db_editor
-    restart: always
-    environment:
-      - POSTGRES_USER=${POSTGRES_USERNAME}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_HOST=${POSTGRES_HOST}
-      - POSTGRES_PORT=${POSTGRES_PORT}
-      - POSTGRES_DB=${POSTGRES_DB}
-    expose:
-      - 8080
+    image: adminer:4
+    restart: unless-stopped
     ports:
       - 8081:8080
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
   redis:
     image: redis:7-alpine
-    container_name: redis
-    restart: always
+    restart: unless-stopped
     command: ["redis-server", "--save", "60", "1", "--appendonly", "yes"]
     volumes:
       - redis_data:/data
-    expose:
-      - 6379
-    ports:
-      - 6380:6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
-  backend_app:
-    container_name: backend_app
-    restart: always
+  api:
+    restart: unless-stopped
     build:
-      dockerfile: Dockerfile
-      context: ./backend/
+      context: ./PaymentRecoveryAPI
     env_file:
       - .env
     environment:
-      - REDIS_HOST=redis
-      - ENVIRONMENT=${ENVIRONMENT}
-      - DEBUG=${DEBUG}
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_HOST=${POSTGRES_HOST}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_PORT=${POSTGRES_PORT}
-      - POSTGRES_SCHEMA=${POSTGRES_SCHEMA}
-      - POSTGRES_USERNAME=${POSTGRES_USERNAME}
-      - BACKEND_SERVER_HOST=${BACKEND_SERVER_HOST}
-      - BACKEND_SERVER_PORT=${BACKEND_SERVER_PORT}
-      - BACKEND_SERVER_WORKERS=${BACKEND_SERVER_WORKERS}
-      - DB_TIMEOUT=${DB_TIMEOUT}
-      - DB_POOL_SIZE=${DB_POOL_SIZE}
-      - DB_MAX_POOL_CON=${DB_MAX_POOL_CON}
-      - DB_POOL_OVERFLOW=${DB_POOL_OVERFLOW}
-      - IS_DB_ECHO_LOG=${IS_DB_ECHO_LOG}
-      - IS_DB_EXPIRE_ON_COMMIT=${IS_DB_EXPIRE_ON_COMMIT}
-      - IS_DB_FORCE_ROLLBACK=${IS_DB_FORCE_ROLLBACK}
-      - IS_ALLOWED_CREDENTIALS=${IS_ALLOWED_CREDENTIALS}
-      - API_TOKEN=${API_TOKEN}
-      - AUTH_TOKEN=${AUTH_TOKEN}
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-      - JWT_SUBJECT=${JWT_SUBJECT}
-      - JWT_TOKEN_PREFIX=${JWT_TOKEN_PREFIX}
-      - JWT_ALGORITHM=${JWT_ALGORITHM}
-      - JWT_MIN=${JWT_MIN}
-      - JWT_HOUR=${JWT_HOUR}
-      - JWT_DAY=${JWT_DAY}
-      - HASHING_ALGORITHM_LAYER_1=${HASHING_ALGORITHM_LAYER_1}
-      - HASHING_ALGORITHM_LAYER_2=${HASHING_ALGORITHM_LAYER_2}
-      - HASHING_SALT=${HASHING_SALT}
+      POSTGRES_HOST: db
+      REDIS_HOST: redis
+      SIMULATION_API_BASE_URL: http://simulation_api:8001/api/v1
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:5173}
     volumes:
-      - ./backend/:/usr/backend/
-    expose:
-      - 8000
+      - ./PaymentRecoveryAPI:/usr/backend
     ports:
-      - 8001:8000
+      - "${BACKEND_PORT:-8000}:8000"
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  simulation_api:
+    restart: unless-stopped
+    build:
+      context: ./demo/simulation_api
+    ports:
+      - "${SIMULATION_API_PORT:-8001}:8001"
 
   # Agent worker: drains the priority queue by case_id. Each case is claimed by
   # exactly one worker (see `claim_for_processing`), so this scales safely
   # across parallel workers - set CELERY_WORKER_CONCURRENCY in .env (default 4).
   celery_worker:
-    container_name: celery_worker
-    restart: always
+    restart: unless-stopped
     build:
-      dockerfile: Dockerfile
-      context: ./backend/
+      context: ./PaymentRecoveryAPI
     env_file:
       - .env
     environment:
-      - REDIS_HOST=redis
+      REDIS_HOST: redis
+      POSTGRES_HOST: db
+      SIMULATION_API_BASE_URL: http://simulation_api:8001/api/v1
     volumes:
-      - ./backend/:/usr/backend/
+      - ./PaymentRecoveryAPI:/usr/backend
     entrypoint: []
     command:
-      - celery
+      - /usr/backend/.venv/bin/celery
       - -A
       - src.workers.celery_app.celery_app
       - worker
@@ -123,31 +90,46 @@ services:
       - --prefetch-multiplier=1
       - --loglevel=info
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      simulation_api:
+        condition: service_started
 
   # Beat: fires the reconciler (anti-starvation + lost-message recovery).
   celery_beat:
-    container_name: celery_beat
-    restart: always
+    restart: unless-stopped
     build:
-      dockerfile: Dockerfile
-      context: ./backend/
+      context: ./PaymentRecoveryAPI
     env_file:
       - .env
     environment:
-      - REDIS_HOST=redis
+      REDIS_HOST: redis
+      POSTGRES_HOST: db
     volumes:
-      - ./backend/:/usr/backend/
+      - ./PaymentRecoveryAPI:/usr/backend
     entrypoint: []
     command:
-      - celery
+      - /usr/backend/.venv/bin/celery
       - -A
       - src.workers.celery_app.celery_app
       - beat
       - --loglevel=info
     depends_on:
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    restart: unless-stopped
+    build:
+      context: ./demo/frontend_demo
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    depends_on:
+      - api
 
 volumes:
   postgresql_db_data:
