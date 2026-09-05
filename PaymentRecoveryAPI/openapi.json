@@ -31,14 +31,14 @@
         }
       }
     },
-    "/api/onboard-business/": {
+    "/api/businesses/": {
       "post": {
         "tags": [
-          "onboarding"
+          "businesses"
         ],
-        "summary": "Onboarding:Initiate",
-        "description": "Step 1 of onboarding.\n\nRegisters a `PENDING` business row and returns the Razorpay `authorization_url`.\nRedirect the business owner there; Razorpay calls back to `/onboard-business/callback`.",
-        "operationId": "onboarding_initiate_api_onboard_business__post",
+        "summary": "Businesses:Initiate",
+        "description": "Step 1 of onboarding.\n\nNo `Business` row is created here - only a signed `state` token carrying the\nform fields. Redirect the business owner to the returned `authorization_url`;\nRazorpay calls back to `/integrations/razorpay/callback`, and a row is\ncreated there only if the OAuth grant actually completes.",
+        "operationId": "businesses_initiate_api_businesses__post",
         "requestBody": {
           "required": true,
           "content": {
@@ -74,10 +74,10 @@
       },
       "get": {
         "tags": [
-          "onboarding"
+          "businesses"
         ],
-        "summary": "Onboarding:List",
-        "operationId": "onboarding_list_api_onboard_business__get",
+        "summary": "Businesses:List",
+        "operationId": "businesses_list_api_businesses__get",
         "parameters": [
           {
             "name": "limit",
@@ -113,7 +113,7 @@
                   "items": {
                     "$ref": "#/components/schemas/BusinessResponse"
                   },
-                  "title": "Response Onboarding List Api Onboard Business  Get"
+                  "title": "Response Businesses List Api Businesses  Get"
                 }
               }
             }
@@ -131,14 +131,237 @@
         }
       }
     },
-    "/api/onboard-business/callback": {
+    "/api/businesses/lookup": {
+      "get": {
+        "tags": [
+          "businesses"
+        ],
+        "summary": "Businesses:Lookup-By-Reference-Id",
+        "description": "\"Login\" for an existing business - since there are no user accounts yet, the\ncaller-supplied `reference_id` from onboarding is the only credential.",
+        "operationId": "businesses_lookup_by_reference_id_api_businesses_lookup_get",
+        "parameters": [
+          {
+            "name": "reference_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "title": "Reference Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/businesses/{business_id}": {
+      "get": {
+        "tags": [
+          "businesses"
+        ],
+        "summary": "Businesses:Get-By-Id",
+        "operationId": "businesses_get_by_id_api_businesses__business_id__get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/businesses/{business_id}/webhook": {
+      "get": {
+        "tags": [
+          "businesses"
+        ],
+        "summary": "Businesses:Get-Webhook-Config",
+        "description": "Live config (url, active, events) of the webhook Razorpay has registered for\nthis business - fetched from Razorpay on every call, not a local cache.",
+        "operationId": "businesses_get_webhook_config_api_businesses__business_id__webhook_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookConfigResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/businesses/{business_id}/settings": {
+      "get": {
+        "tags": [
+          "businesses"
+        ],
+        "summary": "Businesses:Get-Agent-Settings",
+        "description": "How this business has customized its agent - read on every case run by\n`src.agent.orchestration.context` / `src.agent.application.runner`.",
+        "operationId": "businesses_get_agent_settings_api_businesses__business_id__settings_get",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentSettings"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "businesses"
+        ],
+        "summary": "Businesses:Update-Agent-Settings",
+        "operationId": "businesses_update_agent_settings_api_businesses__business_id__settings_put",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentSettings"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentSettings"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/integrations/razorpay/callback": {
       "get": {
         "tags": [
           "onboarding"
         ],
-        "summary": "Onboarding:Callback",
-        "description": "Step 2 of onboarding (Razorpay OAuth redirect target).\n\nExchanges `code` for tokens, stores them encrypted, then creates the\nsub-merchant webhook for the configured event triggers.",
-        "operationId": "onboarding_callback_api_onboard_business_callback_get",
+        "summary": "Razorpay:Callback",
+        "description": "Step 2 of onboarding (Razorpay OAuth redirect target).\n\nDecodes the signed `state` token from step 1 (no DB lookup - nothing was\npersisted yet), exchanges `code` for tokens, and only then creates the\n`Business` row. If the grant is denied or anything fails before the code\nexchange succeeds, no row is ever written. Redirects the browser back to the\ndashboard (`FRONTEND_BASE_URL`) instead of dead-ending in raw JSON.",
+        "operationId": "razorpay_callback_api_integrations_razorpay_callback_get",
         "parameters": [
           {
             "name": "state",
@@ -187,9 +410,7 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BusinessResponse"
-                }
+                "schema": {}
               }
             }
           },
@@ -206,13 +427,13 @@
         }
       }
     },
-    "/api/onboard-business/{business_id}": {
-      "get": {
+    "/api/integrations/razorpay/businesses/{business_id}/refresh-token": {
+      "post": {
         "tags": [
           "onboarding"
         ],
-        "summary": "Onboarding:Get-By-Id",
-        "operationId": "onboarding_get_by_id_api_onboard_business__business_id__get",
+        "summary": "Razorpay:Refresh-Token",
+        "operationId": "razorpay_refresh_token_api_integrations_razorpay_businesses__business_id__refresh_token_post",
         "parameters": [
           {
             "name": "business_id",
@@ -248,14 +469,14 @@
         }
       }
     },
-    "/api/onboard-business/{business_id}/recovery-cases": {
+    "/api/invoices/{business_id}": {
       "get": {
         "tags": [
-          "onboarding"
+          "invoices"
         ],
-        "summary": "Onboarding:List-Recovery-Cases",
-        "description": "Every merged recovery case for this business, most recently active first.",
-        "operationId": "onboarding_list_recovery_cases_api_onboard_business__business_id__recovery_cases_get",
+        "summary": "Invoices:List",
+        "description": "Live invoices from Razorpay (not cached) - lets a human pick one to start\na B2B chase on.",
+        "operationId": "invoices_list_api_invoices__business_id__get",
         "parameters": [
           {
             "name": "business_id",
@@ -267,26 +488,26 @@
             }
           },
           {
-            "name": "limit",
+            "name": "count",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
-              "maximum": 200,
+              "maximum": 100,
               "minimum": 1,
-              "default": 50,
-              "title": "Limit"
+              "default": 25,
+              "title": "Count"
             }
           },
           {
-            "name": "offset",
+            "name": "skip",
             "in": "query",
             "required": false,
             "schema": {
               "type": "integer",
               "minimum": 0,
               "default": 0,
-              "title": "Offset"
+              "title": "Skip"
             }
           }
         ],
@@ -298,9 +519,9 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/RecoveryCaseResponse"
+                    "$ref": "#/components/schemas/InvoiceResponse"
                   },
-                  "title": "Response Onboarding List Recovery Cases Api Onboard Business  Business Id  Recovery Cases Get"
+                  "title": "Response Invoices List Api Invoices  Business Id  Get"
                 }
               }
             }
@@ -318,56 +539,14 @@
         }
       }
     },
-    "/api/onboard-business/{business_id}/webhooks": {
-      "get": {
-        "tags": [
-          "onboarding"
-        ],
-        "summary": "Onboarding:Get-Webhook-Config",
-        "description": "Live config (url, active, events) of the webhook Razorpay has registered for\nthis business - fetched from Razorpay on every call, not a local cache.",
-        "operationId": "onboarding_get_webhook_config_api_onboard_business__business_id__webhooks_get",
-        "parameters": [
-          {
-            "name": "business_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Business Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/WebhookConfigResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/onboard-business/{business_id}/refresh-token": {
+    "/api/invoices/{business_id}/{invoice_id}/chase": {
       "post": {
         "tags": [
-          "onboarding"
+          "invoices"
         ],
-        "summary": "Onboarding:Refresh-Token",
-        "operationId": "onboarding_refresh_token_api_onboard_business__business_id__refresh_token_post",
+        "summary": "Invoices:Start-Chase",
+        "description": "\"Start B2B chase\" - fetches the invoice fresh from Razorpay, then starts a\nrecovery case for it (merges with any existing case for the same invoice/\norder) through the same pipeline every other event uses.",
+        "operationId": "invoices_start_chase_api_invoices__business_id___invoice_id__chase_post",
         "parameters": [
           {
             "name": "business_id",
@@ -377,15 +556,38 @@
               "type": "integer",
               "title": "Business Id"
             }
+          },
+          {
+            "name": "invoice_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Invoice Id"
+            }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartInvoiceChaseRequest"
+              }
+            }
+          }
+        },
         "responses": {
-          "200": {
+          "201": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BusinessResponse"
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Invoices Start Chase Api Invoices  Business Id   Invoice Id  Chase Post"
                 }
               }
             }
@@ -496,13 +698,70 @@
         }
       }
     },
+    "/api/recovery-cases/businesses/{business_id}/start": {
+      "post": {
+        "tags": [
+          "recovery-cases"
+        ],
+        "summary": "Recovery-Cases:Start-Manual",
+        "description": "\"Start custom recovery\" - a human manually asks the agent to chase a specific\norder/customer that didn't (yet) trigger any webhook, drop-off, or invoice\ndetection (e.g. a support ticket, a manual escalation). Merges with any\nexisting case for the same `order_reference`.",
+        "operationId": "recovery_cases_start_manual_api_recovery_cases_businesses__business_id__start_post",
+        "parameters": [
+          {
+            "name": "business_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Business Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualRecoveryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Recovery Cases Start Manual Api Recovery Cases Businesses  Business Id  Start Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/recovery-cases/{case_id}": {
       "get": {
         "tags": [
           "recovery-cases"
         ],
         "summary": "Recovery-Cases:Get-By-Id",
-        "description": "One merged case plus its full delivery history (oldest first) - what an\nagent, a support view, or a debugging session needs to see \"what happened\".",
+        "description": "One merged case plus its full delivery history (inbound, from Razorpay) and\nits audit trail of agent actions (outbound - what was attempted and what came\nback, if anything) - \"what happened with this case\", end to end.",
         "operationId": "recovery_cases_get_by_id_api_recovery_cases__case_id__get",
         "parameters": [
           {
@@ -539,13 +798,117 @@
         }
       }
     },
+    "/api/recovery-cases/{case_id}/feedback": {
+      "post": {
+        "tags": [
+          "recovery-cases"
+        ],
+        "summary": "Recovery-Cases:Feedback",
+        "description": "A customer replied on some channel (today: the demo dashboard, via\n`simulation-api`) - merge it into the case's history and re-dispatch the\nagent with that feedback in context. Reuses the same merge/priority/dispatch\npipeline as a real webhook (`src.services.recovery.ingestion`).",
+        "operationId": "recovery_cases_feedback_api_recovery_cases__case_id__feedback_post",
+        "parameters": [
+          {
+            "name": "case_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Case Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomerFeedbackRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Recovery Cases Feedback Api Recovery Cases  Case Id  Feedback Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/recovery-cases/{case_id}/mark-paid": {
+      "post": {
+        "tags": [
+          "recovery-cases"
+        ],
+        "summary": "Recovery-Cases:Mark-Paid",
+        "description": "A human confirms this case is paid (the demo dashboard's \"mark as paid\", or\nops closing it out of band). Synthesized as a `payment.captured` event so it\nflows through the same pipeline as a real resolving webhook and the case is\nforce-closed to RESOLVED.",
+        "operationId": "recovery_cases_mark_paid_api_recovery_cases__case_id__mark_paid_post",
+        "parameters": [
+          {
+            "name": "case_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Case Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Recovery Cases Mark Paid Api Recovery Cases  Case Id  Mark Paid Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/recovery-cases/{case_id}/retry": {
       "post": {
         "tags": [
           "recovery-cases"
         ],
         "summary": "Recovery-Cases:Retry",
-        "description": "Manually reopen a `DEAD` or `FAILED` case and dispatch it again - for a\nhuman who just fixed the underlying issue (or wants another shot) rather\nthan waiting on the reconciler's own backoff/aging.",
+        "description": "Manually reopen a `DEAD` or `FAILED` case and dispatch it again - for a human\nwho just fixed the underlying issue (or wants another shot) rather than\nwaiting on the reconciler's own backoff/aging.",
         "operationId": "recovery_cases_retry_api_recovery_cases__case_id__retry_post",
         "parameters": [
           {
@@ -582,14 +945,40 @@
         }
       }
     },
-    "/api/webhook-events/{event_id}": {
+    "/api/webhooks/razorpay": {
+      "post": {
+        "tags": [
+          "webhooks"
+        ],
+        "summary": "Webhooks:Razorpay",
+        "description": "Single ingress for every onboarded business' Razorpay webhooks.\n\nFast path: verify signature, normalize the envelope, merge it into its\nrecovery case (same order / same entity -> same case, so a customer\nretrying a failing payment N times is one unit of agent work, not N),\npersist the delivery as history, dispatch the case by priority, return 200.\n\nThe merge/dispatch logic itself lives in `src.services.recovery.ingestion`\n- shared with the drop-off poller (`src.workers.tasks.dropoff_detection`),\nwhich synthesizes the same shape of event from the Orders API since\nRazorpay has no drop-off webhook.",
+        "operationId": "webhooks_razorpay_api_webhooks_razorpay_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Webhooks Razorpay Api Webhooks Razorpay Post"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/webhooks/events/{event_id}": {
       "get": {
         "tags": [
-          "webhook-events"
+          "webhooks"
         ],
         "summary": "Webhook-Events:Get-By-Id",
         "description": "One raw delivery (full verbatim `payload` included) - for debugging a\nspecific webhook outside the context of its merged recovery case.",
-        "operationId": "webhook_events_get_by_id_api_webhook_events__event_id__get",
+        "operationId": "webhook_events_get_by_id_api_webhooks_events__event_id__get",
         "parameters": [
           {
             "name": "event_id",
@@ -624,40 +1013,72 @@
           }
         }
       }
-    },
-    "/api/webhooks/razorpay": {
-      "post": {
-        "tags": [
-          "webhooks"
-        ],
-        "summary": "Webhooks:Razorpay",
-        "description": "Single ingress for every onboarded business' Razorpay webhooks.\n\nFast path: verify signature, normalize the envelope, merge it into its\nrecovery case (same order / same entity -> same case, so a customer\nretrying a failing payment N times is one unit of agent work, not N),\npersist the delivery as history, dispatch the case by priority, return 200.",
-        "operationId": "webhooks_razorpay_api_webhooks_razorpay_post",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "type": "object",
-                  "title": "Response Webhooks Razorpay Api Webhooks Razorpay Post"
-                }
-              }
-            }
-          }
-        }
-      }
     }
   },
   "components": {
     "schemas": {
+      "AgentSettings": {
+        "properties": {
+          "businessDescription": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Businessdescription"
+          },
+          "tone": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Tone",
+            "default": "friendly and professional"
+          },
+          "customInstructions": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custominstructions"
+          },
+          "enabledChannels": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabledchannels"
+          }
+        },
+        "type": "object",
+        "title": "AgentSettings",
+        "description": "A business' customization of how its agent behaves - read directly by\n`src.agent.orchestration.context` (folded into the system prompt) and\n`src.agent.application.runner`\n(which tools it's allowed to use). An empty/default instance means \"use\nthe built-in defaults\", not \"nothing is allowed\"."
+      },
       "BusinessOnboardInitResponse": {
         "properties": {
           "businessId": {
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Businessid"
           },
           "referenceId": {
@@ -679,14 +1100,13 @@
         },
         "type": "object",
         "required": [
-          "businessId",
           "referenceId",
           "status",
           "authorizationUrl",
           "state"
         ],
         "title": "BusinessOnboardInitResponse",
-        "description": "Returned by `POST /onboard-business/` - redirect the business owner here to grant access."
+        "description": "Returned by `POST /businesses/` - redirect the business owner here to grant\naccess. No `Business` row exists yet at this point - `business_id` is only\npopulated once the OAuth callback completes and creates one."
       },
       "BusinessOnboardRequest": {
         "properties": {
@@ -809,6 +1229,11 @@
             ],
             "title": "Webhookid"
           },
+          "agentSettings": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Agentsettings"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time",
@@ -838,10 +1263,79 @@
           "tokenScope",
           "tokenExpiresAt",
           "webhookId",
+          "agentSettings",
           "createdAt",
           "updatedAt"
         ],
         "title": "BusinessResponse"
+      },
+      "CaseActionResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "toolName": {
+            "type": "string",
+            "title": "Toolname"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "toolInput": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Toolinput"
+          },
+          "toolOutput": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tooloutput"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Createdat"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "toolName",
+          "status",
+          "toolInput",
+          "toolOutput",
+          "createdAt"
+        ],
+        "title": "CaseActionResponse",
+        "description": "One audit-trail entry: a tool the agent called, what it sent, and what\ncame back (if anything) - the outbound counterpart to `WebhookEventResponse`."
+      },
+      "CustomerFeedbackRequest": {
+        "properties": {
+          "channel": {
+            "type": "string",
+            "title": "Channel"
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "channel",
+          "message"
+        ],
+        "title": "CustomerFeedbackRequest",
+        "description": "A customer's reply on some channel - from the demo dashboard today, a\nreal inbound channel eventually. See `POST /recovery-cases/{id}/feedback`."
       },
       "HTTPValidationError": {
         "properties": {
@@ -855,6 +1349,185 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "InvoiceCustomerDetails": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "contact": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact"
+          }
+        },
+        "type": "object",
+        "title": "InvoiceCustomerDetails"
+      },
+      "InvoiceResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "invoice_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invoice Number"
+          },
+          "amount": {
+            "type": "integer",
+            "title": "Amount"
+          },
+          "amount_paid": {
+            "type": "integer",
+            "title": "Amount Paid",
+            "default": 0
+          },
+          "amount_due": {
+            "type": "integer",
+            "title": "Amount Due",
+            "default": 0
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency",
+            "default": "INR"
+          },
+          "short_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Short Url"
+          },
+          "customer_details": {
+            "$ref": "#/components/schemas/InvoiceCustomerDetails"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "amount"
+        ],
+        "title": "InvoiceResponse",
+        "description": "A subset of Razorpay's invoice object - just what the dashboard needs\nto list invoices and let a human start a B2B chase on one."
+      },
+      "ManualRecoveryRequest": {
+        "properties": {
+          "orderReference": {
+            "type": "string",
+            "maxLength": 191,
+            "minLength": 1,
+            "title": "Orderreference"
+          },
+          "customerEmail": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "email"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customeremail"
+          },
+          "customerContact": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 32
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customercontact"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "currency": {
+            "type": "string",
+            "maxLength": 10,
+            "title": "Currency",
+            "default": "INR"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "orderReference",
+          "reason"
+        ],
+        "title": "ManualRecoveryRequest",
+        "description": "A human explicitly asking the agent to chase a specific order/invoice -\n\"start custom recovery\" on the dashboard. See\n`POST /recovery-cases/businesses/{id}/start`."
       },
       "RecoveryCaseDetailResponse": {
         "properties": {
@@ -988,6 +1661,30 @@
             "format": "date-time",
             "title": "Lasteventat"
           },
+          "queuedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queuedat"
+          },
+          "nextVisibleAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextvisibleat"
+          },
           "resolvedAt": {
             "anyOf": [
               {
@@ -1006,6 +1703,13 @@
             },
             "type": "array",
             "title": "History"
+          },
+          "actions": {
+            "items": {
+              "$ref": "#/components/schemas/CaseActionResponse"
+            },
+            "type": "array",
+            "title": "Actions"
           }
         },
         "type": "object",
@@ -1028,11 +1732,14 @@
           "lastError",
           "firstEventAt",
           "lastEventAt",
+          "queuedAt",
+          "nextVisibleAt",
           "resolvedAt",
-          "history"
+          "history",
+          "actions"
         ],
         "title": "RecoveryCaseDetailResponse",
-        "description": "Case + its full merged delivery history, oldest first."
+        "description": "Case + its full merged delivery history (inbound, from Razorpay) and its\naudit trail of agent actions (outbound), both oldest first."
       },
       "RecoveryCaseResponse": {
         "properties": {
@@ -1166,6 +1873,30 @@
             "format": "date-time",
             "title": "Lasteventat"
           },
+          "queuedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queuedat"
+          },
+          "nextVisibleAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextvisibleat"
+          },
           "resolvedAt": {
             "anyOf": [
               {
@@ -1199,6 +1930,8 @@
           "lastError",
           "firstEventAt",
           "lastEventAt",
+          "queuedAt",
+          "nextVisibleAt",
           "resolvedAt"
         ],
         "title": "RecoveryCaseResponse"
@@ -1216,6 +1949,25 @@
         ],
         "title": "RecoveryCaseStatus",
         "description": "Lifecycle of a merged recovery case - this, not the individual webhook\nevent, is what the agent worker actually claims and processes.\n\n    RECEIVED   - case created, not yet handed to the broker\n    QUEUED     - dispatched, waiting for the agent worker\n    PROCESSING - claimed by the worker, agent run in flight\n    PROCESSED  - the agent finished a run (case may reopen on a new failure)\n    FAILED     - transient failure, will be retried\n    DEAD       - retries exhausted, needs a human\n    RESOLVED   - a resolving event arrived (payment eventually succeeded, ...)"
+      },
+      "StartInvoiceChaseRequest": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "title": "StartInvoiceChaseRequest",
+        "description": "Optional overrides when a human kicks off a B2B chase for one invoice."
       },
       "ValidationError": {
         "properties": {

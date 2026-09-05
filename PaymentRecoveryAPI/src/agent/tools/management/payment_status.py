@@ -21,7 +21,7 @@ from src.models.db.business import Business
 from src.repository.crud.business import BusinessCRUDRepository
 from src.repository.crud.recovery_case import RecoveryCaseCRUDRepository
 from src.services.recovery.settlement import is_case_settled
-from src.utilities.exceptions.database import EntityDoesNotExist
+from src.utilities.exceptions import EntityDoesNotExist
 from src.workers.runtime import worker_session
 
 

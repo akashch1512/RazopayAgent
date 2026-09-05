@@ -520,6 +520,53 @@ body.overlay-open {
   color: #b00000;
 }
 
+/* ---------- Queue wait timer ---------- */
+
+.queue-banner {
+  background: #fff7e6;
+  border: 1px solid #000000;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.queue-banner .hint {
+  flex-basis: 100%;
+}
+
+.queue-timer {
+  margin-top: 4px;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: #8a5a00;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.queue-banner .queue-timer {
+  margin-top: 0;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.queue-timer-due {
+  color: #1a7f37;
+  font-weight: 600;
+}
+
+.pending-hint {
+  background: #eef4ff;
+  border: 1px solid #2f6fed;
+  padding: 6px 10px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
 @media (max-width: 560px) {
   .reply-row {
     flex-wrap: wrap;

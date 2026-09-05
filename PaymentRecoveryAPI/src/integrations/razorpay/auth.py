@@ -11,7 +11,7 @@ import logging
 
 from src.config.manager import settings
 from src.models.db.business import Business
-from src.securities.encryption.encryptor import get_data_encryptor
+from src.security.encryption import get_data_encryptor
 
 logger = logging.getLogger(__name__)
 

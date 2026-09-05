@@ -3,7 +3,7 @@
 import datetime
 import logging
 
-from src.agent.tools.outreach._scheduler import deliver_scheduled_action_payload
+from src.agent.tools.outreach.scheduling import deliver_scheduled_action_payload
 from src.config.manager import settings
 from src.models.db.scheduled_action import ScheduledActionStatus
 from src.repository.crud.scheduled_action import ScheduledActionCRUDRepository

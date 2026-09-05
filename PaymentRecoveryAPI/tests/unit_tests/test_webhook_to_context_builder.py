@@ -24,7 +24,7 @@ import pytest
 
 from src.agent.orchestration.context import build_case_context, build_system_prompt_context
 from src.integrations.razorpay.constants import WEBHOOK_EVENTS
-from src.integrations.razorpay.helpers.normalizer import build_dedupe_key, normalize_event
+from src.integrations.razorpay.normalization import build_dedupe_key, normalize_event
 from src.models.db.business import Business
 from src.models.db.recovery_case import RecoveryCase
 from src.models.db.webhook_event import WebhookEvent

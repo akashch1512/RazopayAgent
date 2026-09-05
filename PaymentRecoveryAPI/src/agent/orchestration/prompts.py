@@ -102,7 +102,7 @@ def business_customization_block(business: Business) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _format_case_context(case: dict[str, typing.Any]) -> str:
+def format_case_context(case: dict[str, typing.Any]) -> str:
     facts = case.get("facts") or {}
     fact_text = ", ".join(f"{key}={value}" for key, value in facts.items())
     return "\n".join(
@@ -118,7 +118,7 @@ def _format_case_context(case: dict[str, typing.Any]) -> str:
     )
 
 
-def _format_agent_memory(memory: dict[str, typing.Any]) -> str:
+def format_agent_memory(memory: dict[str, typing.Any]) -> str:
     """Render the checkpointed `RecoveryAgentState` memory back into the prompt.
     Whatever is here does not need to be re-derived from history below."""
     lines: list[str] = []
@@ -145,7 +145,7 @@ def _format_agent_memory(memory: dict[str, typing.Any]) -> str:
     return "\n".join(lines) if lines else "Nothing recorded yet - this is the first substantive run."
 
 
-def _format_communication_memory(memory: list[dict[str, typing.Any]]) -> str:
+def format_communication_memory(memory: list[dict[str, typing.Any]]) -> str:
     if not memory:
         return "No previous customer communication is recorded for this case."
     return "\n".join(

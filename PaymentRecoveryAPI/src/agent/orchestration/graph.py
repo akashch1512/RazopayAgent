@@ -16,7 +16,7 @@ from langgraph.prebuilt import create_react_agent
 
 from src.agent.infrastructure.llm import get_chat_model
 from src.agent.orchestration.prompts import trim_model_messages
-from src.agent.state.recovery import RecoveryAgentState
+from src.agent.orchestration.state import RecoveryAgentState
 
 
 def build_recovery_agent(

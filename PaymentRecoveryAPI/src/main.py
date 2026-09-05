@@ -7,8 +7,8 @@ import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from src.api.endpoints import router as api_endpoint_router
-from src.config.events import (
+from src.api.router import router as api_endpoint_router
+from src.config.lifespan import (
     execute_backend_server_event_handler,
     terminate_backend_server_event_handler,
 )
@@ -46,8 +46,8 @@ def initialize_backend_application() -> fastapi.FastAPI:
 
     app = fastapi.FastAPI(
         lifespan=lifespan,
-        **settings.set_backend_app_attributes,
-    )  # type: ignore
+        **settings.set_backend_app_attributes,  # type: ignore[arg-type]
+    )
 
     app.add_middleware(
         CORSMiddleware,

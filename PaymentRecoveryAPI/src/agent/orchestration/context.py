@@ -16,17 +16,18 @@ into the prompt and the rebuilt-from-DB context is trimmed accordingly.
 
 import typing
 
+from langchain_core.messages import SystemMessage
+
 from src.agent.orchestration.prompts import (
-    _format_agent_memory,
-    _format_case_context,
-    _format_communication_memory,
+    format_agent_memory,
+    format_case_context,
+    format_communication_memory,
     render_system_prompt,
 )
-from src.agent.policies.contact_policy import local_time_string
+from src.agent.orchestration.state import RecoveryAgentState
+from src.agent.policies.contact_timing import local_time_string, resolve_timezone
 from src.agent.skills import render_skills_section
-from src.agent.state.recovery import RecoveryAgentState
-from src.agent.utilities.timezone import resolve_timezone
-from src.integrations.razorpay.helpers.normalizer import extract_primary_entity
+from src.integrations.razorpay.normalization import extract_primary_entity
 from src.models.db.business import Business
 from src.models.db.case_action import CaseAction
 from src.models.db.recovery_case import RecoveryCase
@@ -143,14 +144,14 @@ def build_system_prompt_context(
     business: Business,
     actions: typing.Sequence[CaseAction] = (),
     prior_memory: dict[str, typing.Any] | None = None,
-):
+) -> SystemMessage:
     """Build the per-run system prompt from DB-backed context + prior memory."""
     memory = prior_memory or {}
     timezone_name = resolve_timezone(case.customer_contact)
     latest_event = history[-1] if history else None
     facts = _extract_entity_facts(latest_event.payload) if latest_event else {}
 
-    case_context = _format_case_context(
+    case_context = format_case_context(
         {
             "case_key": case.case_key,
             "entity_type": case.entity_type,
@@ -172,12 +173,12 @@ def build_system_prompt_context(
     return render_system_prompt(
         business=business,
         case_context=case_context,
-        agent_memory=_format_agent_memory(memory),
+        agent_memory=format_agent_memory(memory),
         skills_section=render_skills_section(
             latest_event_type=case.latest_event_type, loaded=memory.get("loaded_skills") or []
         ),
         customer_first_message=first_message or "The customer has not replied to us on this case yet.",
-        communication_memory=_format_communication_memory(
+        communication_memory=format_communication_memory(
             _build_communication_memory(actions, limit=comm_limit)
         ),
         local_time=local_time_string(timezone_name),

@@ -4,7 +4,7 @@ The audit trail for "what did the agent actually do about this case".
 Hooks into LangChain's own callback system (`on_tool_start` / `on_tool_end` /
 `on_tool_error`) instead of instrumenting each tool by hand - so every tool
 call is recorded generically, including the ~40 Razorpay MCP tools loaded
-dynamically per business (`src.agent.mcp`) that we don't author and can't
+dynamically per business (`src.integrations.razorpay.mcp`) that we don't author and can't
 easily edit. Nothing to update here (or in any tool) when a new tool shows up.
 """
 

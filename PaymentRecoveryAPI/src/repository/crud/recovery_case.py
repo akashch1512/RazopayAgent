@@ -11,7 +11,7 @@ from src.models.db.recovery_case import (
     RecoveryCaseStatus,
 )
 from src.repository.crud.base import BaseCRUDRepository
-from src.utilities.exceptions.database import EntityDoesNotExist
+from src.utilities.exceptions import EntityDoesNotExist
 
 
 def _utcnow() -> datetime.datetime:
@@ -183,8 +183,17 @@ class RecoveryCaseCRUDRepository(BaseCRUDRepository):
         return case.processing_status not in IN_FLIGHT_CASE_STATUSES
 
     async def mark_queued(
-        self, *, case_id: int, celery_task_id: str, priority: int, priority_reason: str
+        self,
+        *,
+        case_id: int,
+        celery_task_id: str,
+        priority: int,
+        priority_reason: str,
+        not_before: datetime.datetime | None = None,
     ) -> None:
+        """`not_before` records when the delayed worker task actually becomes
+        visible (grace period / agent-scheduled follow-up), so the UI can show a
+        countdown; `None` means "runs as soon as a worker picks it up"."""
         stmt = (
             sqlalchemy.update(RecoveryCase)
             .where(
@@ -197,7 +206,7 @@ class RecoveryCaseCRUDRepository(BaseCRUDRepository):
                 priority=priority,
                 priority_reason=priority_reason,
                 queued_at=_utcnow(),
-                next_visible_at=None,
+                next_visible_at=not_before,
             )
         )
         await self.async_session.execute(stmt)
@@ -292,6 +301,10 @@ class RecoveryCaseCRUDRepository(BaseCRUDRepository):
                     sqlalchemy.and_(
                         RecoveryCase.processing_status.in_(IN_FLIGHT_CASE_STATUSES),
                         RecoveryCase.queued_at <= stuck_before,
+                        sqlalchemy.or_(
+                            RecoveryCase.next_visible_at.is_(None),
+                            RecoveryCase.next_visible_at <= now,
+                        ),
                     ),
                 )
             )

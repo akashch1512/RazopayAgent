@@ -15,7 +15,7 @@ from src.config.manager import settings
 
 
 class AsyncDatabase:
-    def __init__(self):
+    def __init__(self) -> None:
         self.async_engine: SQLAlchemyAsyncEngine = create_sqlalchemy_async_engine(
             url=settings.DATABASE_URL,
             echo=settings.IS_DB_ECHO_LOG,

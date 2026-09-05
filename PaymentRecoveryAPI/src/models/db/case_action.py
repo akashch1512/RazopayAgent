@@ -6,7 +6,7 @@ from sqlalchemy.orm import Mapped as SQLAlchemyMapped
 from sqlalchemy.orm import mapped_column as sqlalchemy_mapped_column
 from sqlalchemy.sql import functions as sqlalchemy_functions
 
-from src.repository.table import Base
+from src.repository.model_base import Base
 
 
 class CaseAction(Base):  # type: ignore
@@ -18,7 +18,7 @@ class CaseAction(Base):  # type: ignore
     Complements `WebhookEvent` (the inbound side - what Razorpay told us) with
     the outbound side - what the agent actually did about it. Covers both our
     own static tools and the dynamically-loaded Razorpay MCP tools, recorded
-    generically via `src.agent.audit.CaseActionAuditHandler` rather than
+    generically via `src.agent.infrastructure.audit.CaseActionAuditHandler` rather than
     per-tool code.
     """
 

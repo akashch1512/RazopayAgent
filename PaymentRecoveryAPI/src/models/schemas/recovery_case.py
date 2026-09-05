@@ -39,6 +39,10 @@ class RecoveryCaseResponse(BaseSchemaModel):
     last_error: str | None
     first_event_at: datetime.datetime
     last_event_at: datetime.datetime
+    queued_at: datetime.datetime | None
+    # When a delayed worker task (grace period / agent follow-up) becomes
+    # visible - lets the dashboard show a "runs in mm:ss" countdown.
+    next_visible_at: datetime.datetime | None
     resolved_at: datetime.datetime | None
 
 

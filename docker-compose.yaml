@@ -81,7 +81,7 @@ services:
       - ./PaymentRecoveryAPI:/usr/backend
     entrypoint: []
     command:
-      - celery
+      - /usr/backend/.venv/bin/celery
       - -A
       - src.workers.celery_app.celery_app
       - worker
@@ -111,7 +111,7 @@ services:
       - ./PaymentRecoveryAPI:/usr/backend
     entrypoint: []
     command:
-      - celery
+      - /usr/backend/.venv/bin/celery
       - -A
       - src.workers.celery_app.celery_app
       - beat

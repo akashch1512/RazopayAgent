@@ -1,8 +1,8 @@
 """Static tools made available to every recovery-agent run."""
 
-from src.agent.tools.management_tools.case_memory import record_case_memory
-from src.agent.tools.management_tools.payment_status import check_payment_status
-from src.agent.tools.management_tools.skills import load_skill
+from src.agent.tools.management.case_memory import record_case_memory
+from src.agent.tools.management.payment_status import check_payment_status
+from src.agent.tools.management.skills import load_skill
 from src.agent.tools.outreach.app_notification import send_app_notification
 from src.agent.tools.outreach.call import make_call
 from src.agent.tools.outreach.email import send_email

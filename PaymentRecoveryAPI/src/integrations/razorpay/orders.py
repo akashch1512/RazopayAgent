@@ -10,8 +10,8 @@ import logging
 import httpx
 
 from src.config.manager import settings
+from src.integrations.razorpay.client import razorpay_request
 from src.integrations.razorpay.exceptions import RazorpayIntegrationError
-from src.integrations.razorpay.helpers.http import razorpay_request
 
 _ORDERS_PATH = "/v1/orders"
 _PAGE_SIZE = 100

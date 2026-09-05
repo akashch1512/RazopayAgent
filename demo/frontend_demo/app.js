@@ -81,16 +81,55 @@ function soundToggleLabel() {
 
 // ---------- Live dashboard refresh ----------
 
-const dashState = { timer: null, sig: null };
+const dashState = { timer: null, sig: null, tick: null };
 
 function stopDashboardAutoRefresh() {
   if (dashState.timer) clearInterval(dashState.timer);
+  if (dashState.tick) clearInterval(dashState.tick);
   dashState.timer = null;
+  dashState.tick = null;
+}
+
+function formatCountdown(ms) {
+  const total = Math.max(0, Math.round(ms / 1000));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const pad = (n) => String(n).padStart(2, "0");
+  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+}
+
+// Updates every `.queue-timer` (a QUEUED case waiting out its grace window).
+function tickQueueTimers() {
+  const now = Date.now();
+  let anyWaiting = false;
+  document.querySelectorAll(".queue-timer").forEach((el) => {
+    const untilStr = el.dataset.until;
+    if (!untilStr) return;
+    const until = new Date(untilStr).getTime();
+    if (isNaN(until)) return;
+    const remaining = until - now;
+    const out = el.querySelector(".queue-remaining");
+    if (!out) return;
+    if (remaining > 0) {
+      anyWaiting = true;
+      out.textContent = formatCountdown(remaining);
+      el.classList.remove("queue-timer-due");
+    } else {
+      out.textContent = "starting…";
+      el.classList.add("queue-timer-due");
+    }
+  });
+  const banner = document.getElementById("queue-banner-count");
+  if (banner && !anyWaiting) {
+    const card = document.getElementById("queue-banner");
+    if (card) card.hidden = true;
+  }
 }
 
 function caseSignature(cases) {
   return (cases || [])
-    .map((c) => `${c.id}:${c.processingStatus}:${c.lastEventAt}`)
+    .map((c) => `${c.id}:${c.processingStatus}:${c.lastEventAt}:${c.nextVisibleAt || c.next_visible_at || ""}`)
     .sort()
     .join("|");
 }
@@ -124,6 +163,30 @@ function startDashboardAutoRefresh(businessId, cases) {
   stopDashboardAutoRefresh();
   dashState.sig = caseSignature(cases);
   dashState.timer = setInterval(() => dashboardTick(businessId), 8000);
+  dashState.tick = setInterval(tickQueueTimers, 1000);
+  tickQueueTimers();
+}
+
+function waitingCases(cases) {
+  const now = Date.now();
+  return (cases || []).filter((c) => {
+    const next = c.nextVisibleAt || c.next_visible_at;
+    return c.processingStatus === "QUEUED" && next && new Date(next).getTime() > now;
+  });
+}
+
+// The "Runs in" table cell - a live countdown for a case still in its grace
+// window, or a short status word for everything else.
+function queueCell(c) {
+  const status = c.processingStatus;
+  const next = c.nextVisibleAt || c.next_visible_at;
+  if (status === "QUEUED" && next && new Date(next).getTime() > Date.now()) {
+    return `<span class="queue-timer" data-until="${escapeHtml(next)}" title="Grace window - the customer has this long to fix it before the agent starts">⏳ <span class="queue-remaining">…</span></span>`;
+  }
+  if (status === "QUEUED" || status === "RECEIVED") return `<span class="muted">any moment</span>`;
+  if (status === "PROCESSING") return `<span class="muted">running now</span>`;
+  if (status === "FAILED") return `<span class="muted">retry pending</span>`;
+  return "-";
 }
 
 function escapeHtml(value) {
@@ -369,6 +432,8 @@ async function renderDashboard(message) {
 
     ${renderCaseStats(cases)}
 
+    ${renderQueueBanner(cases)}
+
     <div class="card">
       <div class="card-title-row">
         <div class="card-title">Recovery Cases (${cases.length})</div>
@@ -381,7 +446,7 @@ async function renderDashboard(message) {
         <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Case</th><th>Customer</th><th>Event</th><th>Status</th><th>Priority</th><th>Last Event</th><th></th></tr>
+            <tr><th>Case</th><th>Customer</th><th>Event</th><th>Status</th><th>Runs in</th><th>Priority</th><th>Last Event</th><th></th></tr>
           </thead>
           <tbody>
             ${cases
@@ -392,6 +457,7 @@ async function renderDashboard(message) {
                 <td>${formatValue(c.customerEmail || c.customerContact)}</td>
                 <td>${formatValue(c.latestEventType)}</td>
                 <td><span class="tag">${formatValue(c.processingStatus)}</span></td>
+                <td>${queueCell(c)}</td>
                 <td>${formatValue(c.priority)}</td>
                 <td>${formatValue(c.lastEventAt)}</td>
                 <td class="actions">
@@ -404,7 +470,7 @@ async function renderDashboard(message) {
                 </td>
               </tr>
               <tr id="case-detail-${c.id}" class="case-detail-row" hidden>
-                <td colspan="7"><div class="case-detail"></div></td>
+                <td colspan="8"><div class="case-detail"></div></td>
               </tr>
             `
               )
@@ -525,6 +591,22 @@ const PROCESSING_STATUSES = ["RECEIVED", "QUEUED", "PROCESSING"];
 const HANDLED_STATUSES = ["RESOLVED", "PROCESSED"];
 const FAILED_STATUSES = ["FAILED", "DEAD"];
 
+function renderQueueBanner(cases) {
+  const waiting = waitingCases(cases);
+  if (waiting.length === 0) return "";
+  const soonest = waiting
+    .map((c) => new Date(c.nextVisibleAt || c.next_visible_at).getTime())
+    .sort((a, b) => a - b)[0];
+  return `
+    <div class="card queue-banner" id="queue-banner">
+      <span id="queue-banner-count">⏳ ${waiting.length} case${waiting.length > 1 ? "s" : ""} waiting out the grace window</span>
+      - next one starts in
+      <span class="queue-timer" data-until="${escapeHtml(new Date(soonest).toISOString())}"><span class="queue-remaining">…</span></span>.
+      <span class="hint">The customer gets this window to fix it themselves before the agent steps in.</span>
+    </div>
+  `;
+}
+
 function renderCaseStats(cases) {
   const total = cases.length;
   const handled = cases.filter((c) => HANDLED_STATUSES.includes(c.processingStatus)).length;
@@ -631,11 +713,17 @@ async function toggleCaseDetail(caseId) {
 
   try {
     const detail = await api(`/recovery-cases/${caseId}`);
+    const nextVisible = detail.nextVisibleAt || detail.next_visible_at;
     container.innerHTML = `
       <div class="row"><span class="key">Entity Type</span><span>${formatValue(detail.entityType)}</span></div>
       <div class="row"><span class="key">Primary Entity ID</span><span>${formatValue(detail.primaryEntityId)}</span></div>
       <div class="row"><span class="key">Priority Reason</span><span>${formatValue(detail.priorityReason)}</span></div>
       <div class="row"><span class="key">Processing Attempts</span><span>${formatValue(detail.processingAttempts)}</span></div>
+      ${
+        nextVisible
+          ? `<div class="row"><span class="key">Runs in</span><span>${queueCell(detail)}</span></div>`
+          : ""
+      }
       <div class="row"><span class="key">Last Error</span><span>${formatValue(detail.lastError)}</span></div>
 
       <h3>Agent Actions</h3>
@@ -685,6 +773,7 @@ async function toggleCaseDetail(caseId) {
         toggleWebhookHistoryDetail(caseId, idx, detail.history[idx]);
       });
     });
+    tickQueueTimers();
   } catch (err) {
     container.innerHTML = `<div class="error">Failed to load case detail: ${escapeHtml(err.message)}</div>`;
   }
@@ -722,7 +811,14 @@ function toggleWebhookHistoryDetail(caseId, idx, event) {
 
 // ---------- Customer Controls overlay ----------
 
-const controlsState = { caseId: null, pollTimer: null, cases: [], seenAgentCount: null };
+const controlsState = {
+  caseId: null,
+  pollTimer: null,
+  cases: [],
+  seenAgentCount: null,
+  pendingChannel: null,
+  userPickedChannel: false,
+};
 
 function customerLabel(c) {
   const who = c.customerEmail || c.customerContact || "unknown customer";
@@ -774,6 +870,7 @@ function openControlsOverlay(cases) {
         </div>
 
         <form id="controls-reply-form" class="reply-form" hidden>
+          <div id="controls-pending-hint" class="pending-hint" hidden></div>
           <div class="reply-row">
             <select id="controls-reply-channel" class="reply-channel">
               ${REPLY_CHANNELS.map((ch) => `<option value="${ch}">${ch}</option>`).join("")}
@@ -813,6 +910,9 @@ function openControlsOverlay(cases) {
     selectControlsCase(e.target.value);
   });
   document.getElementById("controls-reply-form").addEventListener("submit", sendControlsReply);
+  document.getElementById("controls-reply-channel").addEventListener("change", () => {
+    controlsState.userPickedChannel = true;
+  });
   document.getElementById("controls-mark-paid").addEventListener("click", markControlsCasePaid);
 }
 
@@ -844,6 +944,8 @@ function closeControlsOverlay() {
   controlsState.pollTimer = null;
   controlsState.caseId = null;
   controlsState.seenAgentCount = null;
+  controlsState.pendingChannel = null;
+  controlsState.userPickedChannel = false;
   document.removeEventListener("keydown", onControlsKeydown);
   document.body.classList.remove("overlay-open");
   const overlay = document.getElementById("controls-overlay");
@@ -855,6 +957,10 @@ function closeControlsOverlay() {
 function selectControlsCase(caseId) {
   controlsState.caseId = caseId || null;
   controlsState.seenAgentCount = null; // first load of a case never pings
+  controlsState.pendingChannel = null;
+  controlsState.userPickedChannel = false;
+  const hint = document.getElementById("controls-pending-hint");
+  if (hint) hint.hidden = true;
   if (controlsState.pollTimer) clearInterval(controlsState.pollTimer);
   controlsState.pollTimer = null;
 
@@ -907,6 +1013,11 @@ async function loadConversation() {
   }
   controlsState.seenAgentCount = agentCount;
 
+  // The channel of the newest agent message the customer hasn't answered yet -
+  // make that the default reply channel and flag it.
+  const unanswered = comms.filter((c) => c.message && !c.customer_response);
+  updatePendingChannel(unanswered.length ? unanswered[0].channel : null);
+
   // Store keeps newest first; show oldest first like a chat.
   const ordered = [...comms].reverse();
   const wasNearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
@@ -935,6 +1046,31 @@ async function loadConversation() {
   if (wasNearBottom) box.scrollTop = box.scrollHeight;
 }
 
+function updatePendingChannel(channel) {
+  const select = document.getElementById("controls-reply-channel");
+  const hint = document.getElementById("controls-pending-hint");
+  if (!select || !hint) return;
+
+  // Refresh option labels: a dot marks the channel with an unanswered message.
+  Array.from(select.options).forEach((opt) => {
+    opt.textContent = opt.value === channel ? `● ${opt.value}` : opt.value;
+  });
+
+  if (!channel) {
+    hint.hidden = true;
+    controlsState.pendingChannel = null;
+    return;
+  }
+
+  const isNew = channel !== controlsState.pendingChannel;
+  controlsState.pendingChannel = channel;
+  if (isNew && !controlsState.userPickedChannel && Array.from(select.options).some((o) => o.value === channel)) {
+    select.value = channel;
+  }
+  hint.textContent = `💬 New message on "${channel}" - your reply will go out on this channel.`;
+  hint.hidden = false;
+}
+
 async function sendControlsReply(event) {
   event.preventDefault();
   unlockAudio();
@@ -953,6 +1089,7 @@ async function sendControlsReply(event) {
       body: JSON.stringify({ case_id: String(caseId), channel, message }),
     });
     input.value = "";
+    controlsState.userPickedChannel = false;
     setControlsStatus("Reply sent - the agent will see it on its next run.");
     await loadConversation();
   } catch (err) {

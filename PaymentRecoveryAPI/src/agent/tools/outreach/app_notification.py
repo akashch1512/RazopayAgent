@@ -11,7 +11,7 @@ import typing
 from langchain_core.tools import tool
 from langgraph.prebuilt import InjectedState
 
-from src.agent.tools.outreach._scheduler import schedule_outreach
+from src.agent.tools.outreach.scheduling import schedule_outreach
 
 
 @tool

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Mapped as SQLAlchemyMapped
 from sqlalchemy.orm import mapped_column as sqlalchemy_mapped_column
 from sqlalchemy.sql import functions as sqlalchemy_functions
 
-from src.repository.table import Base
+from src.repository.model_base import Base
 
 
 class WebhookEvent(Base):  # type: ignore

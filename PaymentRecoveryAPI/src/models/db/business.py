@@ -6,7 +6,7 @@ from sqlalchemy.orm import Mapped as SQLAlchemyMapped
 from sqlalchemy.orm import mapped_column as sqlalchemy_mapped_column
 from sqlalchemy.sql import functions as sqlalchemy_functions
 
-from src.repository.table import Base
+from src.repository.model_base import Base
 
 
 class Business(Base):  # type: ignore
@@ -78,7 +78,7 @@ class Business(Base):  # type: ignore
     )
 
     # Business-customized agent behaviour - see `src.models.schemas.business.AgentSettings`.
-    # Read directly by `src.agent.context`/`src.agent.runner`; an empty dict
+    # Read directly by `src.agent.orchestration.context` / `src.agent.application.runner`; an empty dict
     # means "use the defaults", not "unconfigured".
     agent_settings: SQLAlchemyMapped[dict] = sqlalchemy_mapped_column(JSONB, nullable=False, server_default="{}")
 

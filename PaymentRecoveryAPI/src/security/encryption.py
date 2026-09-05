@@ -11,7 +11,7 @@ class DataEncryptor:
     sensitive third-party secrets - such as Razorpay OAuth tokens - at rest.
     """
 
-    def __init__(self, key: str):
+    def __init__(self, key: str) -> None:
         if not key:
             raise ValueError(
                 "`ENCRYPTION_KEY` is not configured. Generate one with "

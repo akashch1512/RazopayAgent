@@ -4,7 +4,7 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy.engine import Connection
 
-from src.repository.base import Base
+from src.repository.registry import Base
 from src.repository.database import async_db
 
 config = context.config

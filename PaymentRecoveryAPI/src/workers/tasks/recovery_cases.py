@@ -22,7 +22,7 @@ from src.repository.crud.business import BusinessCRUDRepository
 from src.repository.crud.case_action import CaseActionCRUDRepository
 from src.repository.crud.recovery_case import RecoveryCaseCRUDRepository
 from src.repository.crud.webhook_event import WebhookEventCRUDRepository
-from src.utilities.exceptions.database import EntityDoesNotExist
+from src.utilities.exceptions import EntityDoesNotExist
 from src.workers import names
 from src.workers.celery_app import celery_app
 from src.workers.enqueue import EnqueueError, enqueue
@@ -73,7 +73,11 @@ async def _schedule_followup_if_requested(
         return None
 
     await case_repo.mark_queued(
-        case_id=case_id, celery_task_id=task_id, priority=priority, priority_reason="agent-scheduled follow-up"
+        case_id=case_id,
+        celery_task_id=task_id,
+        priority=priority,
+        priority_reason="agent-scheduled follow-up",
+        not_before=due,
     )
     logger.info(f"recovery_case id={case_id} follow-up scheduled for {due.isoformat()} (in {countdown}s)")
     return due.isoformat()

@@ -5,11 +5,11 @@ import sqlalchemy
 from sqlalchemy.sql import functions as sqlalchemy_functions
 
 from src.integrations.razorpay.exceptions import RazorpayOAuthError
+from src.integrations.razorpay.schemas import RazorpayTokenResponse
 from src.models.db.business import Business
-from src.models.schemas.business import RazorpayTokenResponse
 from src.repository.crud.base import BaseCRUDRepository
-from src.securities.encryption.encryptor import get_data_encryptor
-from src.utilities.exceptions.database import EntityAlreadyExists, EntityDoesNotExist
+from src.security.encryption import get_data_encryptor
+from src.utilities.exceptions import EntityAlreadyExists, EntityDoesNotExist
 
 
 class BusinessCRUDRepository(BaseCRUDRepository):

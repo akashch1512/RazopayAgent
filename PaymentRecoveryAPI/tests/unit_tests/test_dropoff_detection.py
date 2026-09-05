@@ -1,6 +1,6 @@
 import datetime
 
-from src.integrations.razorpay.helpers.normalizer import normalize_event
+from src.integrations.razorpay.normalization import normalize_event
 from src.services.recovery.grouping import is_resolving_event, resolve_case_key
 from src.services.recovery.priority import compute_priority
 from src.workers.tasks.dropoff_detection import (

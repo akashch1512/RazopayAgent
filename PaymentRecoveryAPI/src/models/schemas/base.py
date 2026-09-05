@@ -1,7 +1,7 @@
 import pydantic
 from pydantic import ConfigDict
 
-from src.utilities.formatters.field_formatter import format_dict_key_to_camel_case
+from src.utilities.text import format_dict_key_to_camel_case
 
 
 class BaseSchemaModel(pydantic.BaseModel):

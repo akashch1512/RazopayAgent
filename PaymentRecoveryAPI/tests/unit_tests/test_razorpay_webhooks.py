@@ -5,7 +5,7 @@ import pathlib
 
 import pytest
 
-from src.integrations.razorpay.helpers.normalizer import build_dedupe_key, normalize_event
+from src.integrations.razorpay.normalization import build_dedupe_key, normalize_event
 from src.integrations.razorpay.webhooks import razorpay_webhook_client
 
 _SAMPLES_DIR = pathlib.Path(__file__).parents[2].parent / "docs" / "webhooks" / "recovery_webhooks"

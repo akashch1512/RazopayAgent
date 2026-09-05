@@ -59,9 +59,10 @@ AGENT_CHANNELS: tuple[str, ...] = (
 class AgentSettings(BaseSchemaModel):
     """
     A business' customization of how its agent behaves - read directly by
-    `src.agent.context` (folded into the system prompt) and `src.agent.runner`
-    (which tools it's allowed to use). An empty/default instance means "use
-    the built-in defaults", not "nothing is allowed".
+    `src.agent.orchestration.context` (folded into the system prompt) and
+    `src.agent.application.runner` (which tools it's allowed to use). An
+    empty/default instance means "use the built-in defaults", not "nothing is
+    allowed".
     """
 
     business_description: str | None = pydantic.Field(default=None, max_length=1000)
@@ -124,15 +125,3 @@ class StartInvoiceChaseRequest(BaseSchemaModel):
     """Optional overrides when a human kicks off a B2B chase for one invoice."""
 
     reason: str | None = pydantic.Field(default=None, max_length=500)
-
-
-class RazorpayTokenResponse(pydantic.BaseModel):
-    """Shape of the Razorpay `POST /token` response."""
-
-    access_token: str
-    refresh_token: str | None = None
-    public_token: str | None = None
-    token_type: str = "Bearer"
-    expires_in: int | None = None
-    razorpay_account_id: str | None = None
-    scope: str | None = None

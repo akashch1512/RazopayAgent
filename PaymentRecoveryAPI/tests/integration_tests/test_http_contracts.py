@@ -28,8 +28,22 @@ async def test_openapi_describes_public_api(http_contract_client: httpx.AsyncCli
     assert response.status_code == 200
     document = response.json()
     assert document["info"]["title"] == "Razopay Agent API"
-    assert "/api/health" in document["paths"]
-    assert "/api/webhooks/razorpay" in document["paths"]
+    for path in (
+        "/api/health",
+        "/api/webhooks/razorpay",
+        "/api/webhooks/events/{event_id}",
+        "/api/businesses/",
+        "/api/businesses/{business_id}/webhook",
+        "/api/businesses/{business_id}/settings",
+        "/api/invoices/{business_id}",
+        "/api/invoices/{business_id}/{invoice_id}/chase",
+        "/api/recovery-cases/",
+        "/api/recovery-cases/{case_id}/feedback",
+        "/api/recovery-cases/{case_id}/mark-paid",
+        "/api/recovery-cases/businesses/{business_id}/start",
+        "/api/integrations/razorpay/callback",
+    ):
+        assert path in document["paths"], path
 
 
 @pytest.mark.anyio

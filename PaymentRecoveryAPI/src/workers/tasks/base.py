@@ -7,6 +7,7 @@ task type only has to implement its own logic.
 
 import logging
 import random
+import typing
 
 from celery import Task
 
@@ -36,10 +37,22 @@ class DBTask(Task):
     # We manage our own backoff via `self.retry(countdown=...)`.
     default_retry_delay = settings.WEBHOOK_RETRY_BASE_DELAY_SECONDS
 
-    def on_failure(self, exc, task_id, args, kwargs, einfo):  # noqa: ANN001
-        logger.error(
-            f"task {self.name} id={task_id} exhausted retries: {exc!r} kwargs={kwargs}"
-        )
+    def on_failure(
+        self,
+        exc: BaseException,
+        task_id: str,
+        args: tuple[typing.Any, ...],
+        kwargs: dict[str, typing.Any],
+        einfo: typing.Any,
+    ) -> None:
+        logger.error(f"task {self.name} id={task_id} exhausted retries: {exc!r} kwargs={kwargs}")
 
-    def on_retry(self, exc, task_id, args, kwargs, einfo):  # noqa: ANN001
+    def on_retry(
+        self,
+        exc: BaseException,
+        task_id: str,
+        args: tuple[typing.Any, ...],
+        kwargs: dict[str, typing.Any],
+        einfo: typing.Any,
+    ) -> None:
         logger.warning(f"task {self.name} id={task_id} retrying: {exc!r}")

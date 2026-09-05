@@ -6,9 +6,9 @@ import secrets
 import httpx
 
 from src.config.manager import settings
+from src.integrations.razorpay.client import razorpay_request
 from src.integrations.razorpay.constants import WEBHOOK_EVENTS, WEBHOOKS_PATH_TEMPLATE
 from src.integrations.razorpay.exceptions import RazorpayWebhookError
-from src.integrations.razorpay.helpers.http import razorpay_request
 
 logger = logging.getLogger(__name__)
 

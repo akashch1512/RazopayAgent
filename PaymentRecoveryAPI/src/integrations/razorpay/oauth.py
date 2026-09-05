@@ -4,10 +4,10 @@ import urllib.parse
 import httpx
 
 from src.config.manager import settings
+from src.integrations.razorpay.client import razorpay_request
 from src.integrations.razorpay.constants import AUTHORIZE_PATH, TOKEN_PATH
 from src.integrations.razorpay.exceptions import RazorpayOAuthError
-from src.integrations.razorpay.helpers.http import razorpay_request
-from src.models.schemas.business import RazorpayTokenResponse
+from src.integrations.razorpay.schemas import RazorpayTokenResponse
 
 logger = logging.getLogger(__name__)
 

@@ -9,7 +9,7 @@ from src.repository.crud.business import BusinessCRUDRepository
 from src.repository.crud.recovery_case import RecoveryCaseCRUDRepository
 from src.repository.crud.scheduled_action import ScheduledActionCRUDRepository
 from src.services.recovery.settlement import is_case_settled
-from src.utilities.exceptions.database import EntityDoesNotExist
+from src.utilities.exceptions import EntityDoesNotExist
 from src.workers import names
 from src.workers.enqueue import EnqueueError, enqueue
 from src.workers.runtime import worker_session
@@ -103,7 +103,7 @@ async def deliver_scheduled_action_payload(
     *, channel: str, payload: dict[str, typing.Any]
 ) -> dict[str, typing.Any] | None:
     """Send one persisted action through the simulation provider."""
-    from src.agent.tools.outreach._simulation_client import call_simulation_api
+    from src.agent.tools.outreach.simulation_client import call_simulation_api
 
     path = {
         "call": "/simulate/call",

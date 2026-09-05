@@ -3,10 +3,11 @@ import logging
 
 import fastapi
 
-from src.api.dependencies.repository import get_repository
+from src.api.dependencies import get_repository
 from src.config.manager import settings
-from src.integrations.razorpay.helpers.normalizer import build_dedupe_key, normalize_event
+from src.integrations.razorpay.normalization import build_dedupe_key, normalize_event
 from src.integrations.razorpay.webhooks import razorpay_webhook_client
+from src.models.schemas.recovery_case import WebhookEventResponse
 from src.repository.crud.recovery_case import RecoveryCaseCRUDRepository
 from src.repository.crud.webhook_event import WebhookEventCRUDRepository
 from src.services.recovery.ingestion import (
@@ -14,6 +15,7 @@ from src.services.recovery.ingestion import (
     store_event_for_case,
     upsert_case_from_event,
 )
+from src.utilities.exceptions import EntityDoesNotExist
 from src.utilities.retry import transient_db_retry
 
 router = fastapi.APIRouter(prefix="/webhooks", tags=["webhooks"])
@@ -130,3 +132,24 @@ async def receive_razorpay_webhook(
         f"-> case id={case.id} ({status})"
     )
     return {"status": status, "case_id": str(case.id)}
+
+
+@router.get(
+    path="/events/{event_id}",
+    name="webhook-events:get-by-id",
+    response_model=WebhookEventResponse,
+)
+async def get_webhook_event(
+    event_id: int,
+    webhook_repo: WebhookEventCRUDRepository = fastapi.Depends(
+        get_repository(repo_type=WebhookEventCRUDRepository)
+    ),
+) -> WebhookEventResponse:
+    """One raw delivery (full verbatim `payload` included) - for debugging a
+    specific webhook outside the context of its merged recovery case."""
+    try:
+        event = await webhook_repo.read_event_by_id(event_id=event_id)
+    except EntityDoesNotExist as exc:
+        raise fastapi.HTTPException(status_code=fastapi.status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+    return WebhookEventResponse.model_validate(event)

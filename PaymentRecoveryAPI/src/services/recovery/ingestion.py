@@ -76,7 +76,7 @@ def build_customer_feedback_values(
     Shapes a customer's reply (from the demo dashboard today; a real inbound
     channel eventually) into the same normalized-event shape webhooks and
     drop-offs use, so it flows through the identical merge -> history -> agent
-    pipeline and shows up in the case brief `src.agent.context` builds.
+    pipeline and shows up in the case brief `src.agent.orchestration.context` builds.
     """
     now = datetime.datetime.now(tz=datetime.UTC)
     entity_id = f"feedback_{case.id}_{uuid.uuid4().hex[:8]}"
@@ -334,11 +334,17 @@ async def dispatch_case_if_needed(
             kwargs={"case_id": case.id},
             countdown=delay_seconds,
         )
+        not_before = (
+            datetime.datetime.now(tz=datetime.UTC) + datetime.timedelta(seconds=delay_seconds)
+            if delay_seconds
+            else None
+        )
         await case_repo.mark_queued(
             case_id=case.id,
             celery_task_id=task_id,
             priority=case.priority,
             priority_reason=case.priority_reason or "",
+            not_before=not_before,
         )
         return "queued" if is_new else "requeued"
     except Exception as exc:  # noqa: BLE001 - never fail the caller over dispatch

@@ -23,8 +23,8 @@ import logging
 import time
 
 from src.config.manager import settings
+from src.integrations.razorpay.auth import build_auth_header
 from src.integrations.razorpay.exceptions import RazorpayIntegrationError
-from src.integrations.razorpay.helpers.auth import build_auth_header
 from src.integrations.razorpay.invoices import razorpay_invoices_client
 from src.integrations.razorpay.orders import razorpay_orders_client
 from src.models.db.business import Business

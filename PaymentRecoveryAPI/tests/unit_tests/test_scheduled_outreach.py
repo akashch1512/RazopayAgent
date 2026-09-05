@@ -3,7 +3,7 @@ import datetime
 import pytest
 
 from src.agent.application.tool_registry import STATIC_TOOLS
-from src.agent.tools.outreach._scheduler import _parse_schedule
+from src.agent.tools.outreach.scheduling import _parse_schedule
 
 
 def test_schedule_parser_normalizes_utc_timestamp() -> None:

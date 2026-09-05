@@ -3,7 +3,7 @@ import pathlib
 
 import pytest
 
-from src.integrations.razorpay.helpers.normalizer import normalize_event
+from src.integrations.razorpay.normalization import normalize_event
 from src.services.recovery.grouping import is_resolving_event, resolve_case_key
 
 _SAMPLES_DIR = pathlib.Path(__file__).parents[2].parent / "docs" / "webhooks" / "recovery_webhooks"

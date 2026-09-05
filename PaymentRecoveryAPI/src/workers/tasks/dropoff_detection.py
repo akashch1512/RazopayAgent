@@ -24,9 +24,9 @@ import random
 import typing
 
 from src.config.manager import settings
+from src.integrations.razorpay.auth import build_auth_header
 from src.integrations.razorpay.exceptions import RazorpayIntegrationError
-from src.integrations.razorpay.helpers.auth import build_auth_header
-from src.integrations.razorpay.helpers.normalizer import normalize_event
+from src.integrations.razorpay.normalization import normalize_event
 from src.integrations.razorpay.orders import razorpay_orders_client
 from src.models.db.business import Business
 from src.repository.crud.business import BusinessCRUDRepository

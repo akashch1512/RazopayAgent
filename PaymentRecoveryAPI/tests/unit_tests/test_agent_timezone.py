@@ -1,4 +1,4 @@
-from src.agent.utilities.timezone import resolve_timezone
+from src.agent.policies.contact_timing import resolve_timezone
 
 
 def test_india_dial_code() -> None:

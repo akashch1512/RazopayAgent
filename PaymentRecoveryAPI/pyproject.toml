@@ -10,6 +10,7 @@ dependencies = [
     "celery[redis]>=5.4,<6",
     "cryptography>=42,<51",
     "fastapi>=0.115,<1",
+    "httpcore>=1,<2",
     "httpx>=0.27,<1",
     "email-validator>=2.2,<3",
     "langchain-mcp-adapters>=0.1,<1",
@@ -49,10 +50,13 @@ target-version = "py311"
 exclude = ["src/repository/migrations"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "B", "UP", "SIM"]
+select = ["E", "F", "I", "B", "UP", "SIM", "ANN"]
+# ANN401: allow explicit `typing.Any`.
+ignore = ["ANN401"]
 
 [tool.ruff.lint.per-file-ignores]
 "src/api/**/*.py" = ["B008"]
+"tests/**/*.py" = ["ANN"]
 
 [tool.pytest.ini_options]
 python_files = ["test_*.py", "*_test.py"]

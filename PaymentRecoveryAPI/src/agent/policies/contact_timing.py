@@ -1,22 +1,24 @@
 """
-A phone number's country dial code is a decent proxy for the customer's local
-time - good enough to decide "is it 3am for this person right now" without
-pulling in a full number-formatting library.
+Customer-contact timing: resolve a customer's local timezone from their phone
+number and render "what time is it for them right now", so the agent avoids
+calling or notifying anyone at 3am.
 
+A phone number's country dial code is a decent proxy for the customer's local
+time - good enough for this without pulling in a full number-formatting library.
 Deliberately simple: a dial-code -> IANA timezone table, longest prefix first.
 Multi-timezone countries (US, Russia, Australia, Brazil, ...) collapse to one
-representative zone - close enough for "don't call at 3am", not meant to be
-exact. Swap in `phonenumbers` + `timezonefinder` later if real precision on
-those countries is needed.
+representative zone. Swap in `phonenumbers` + `timezonefinder` later if real
+precision on those countries is needed.
 """
 
+import datetime
 import re
+import zoneinfo
 
 from src.config.manager import settings
 
-# Ordered by dial-code length doesn't matter here - `resolve_timezone` tries
-# 3, then 2, then 1-digit prefixes so e.g. "971" (UAE) is checked before "97"
-# or "9" ever could shadow it.
+# `resolve_timezone` tries 3-, then 2-, then 1-digit prefixes so e.g. "971"
+# (UAE) is checked before "97" or "9" could shadow it.
 _DIAL_CODE_TIMEZONES: dict[str, str] = {
     # --- South Asia ---
     "91": "Asia/Kolkata",  # India
@@ -77,9 +79,16 @@ def resolve_timezone(phone_number: str | None) -> str:
         return settings.DEFAULT_CUSTOMER_TIMEZONE
 
     for length in range(_MAX_DIAL_CODE_LENGTH, 0, -1):
-        prefix = digits[:length]
-        timezone = _DIAL_CODE_TIMEZONES.get(prefix)
+        timezone = _DIAL_CODE_TIMEZONES.get(digits[:length])
         if timezone:
             return timezone
 
     return settings.DEFAULT_CUSTOMER_TIMEZONE
+
+
+def local_time_string(timezone_name: str) -> str:
+    try:
+        timezone = zoneinfo.ZoneInfo(timezone_name)
+    except zoneinfo.ZoneInfoNotFoundError:
+        timezone = zoneinfo.ZoneInfo("UTC")
+    return datetime.datetime.now(tz=timezone).strftime("%A, %Y-%m-%d %H:%M %Z")

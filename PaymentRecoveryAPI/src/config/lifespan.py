@@ -4,7 +4,7 @@ import typing
 import fastapi
 
 from src.config.logging import configure_logging
-from src.repository.events import dispose_db_connection, initialize_db_connection
+from src.repository.engine_events import dispose_db_connection, initialize_db_connection
 
 logger = logging.getLogger(__name__)
 

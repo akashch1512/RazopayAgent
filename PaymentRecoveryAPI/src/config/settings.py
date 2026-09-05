@@ -1,9 +1,16 @@
 import logging
 import pathlib
+from enum import StrEnum
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-ROOT_DIR: pathlib.Path = pathlib.Path(__file__).parent.parent.parent.parent.parent.resolve()
+ROOT_DIR: pathlib.Path = pathlib.Path(__file__).parent.parent.parent.parent.resolve()
+
+
+class Environment(StrEnum):
+    PRODUCTION = "PROD"
+    DEVELOPMENT = "DEV"
+    STAGING = "STAGE"
 
 
 class BackendBaseSettings(BaseSettings):
@@ -19,6 +26,7 @@ class BackendBaseSettings(BaseSettings):
     TIMEZONE: str = "UTC"
     DESCRIPTION: str | None = None
     DEBUG: bool = False
+    ENVIRONMENT: Environment = Environment.PRODUCTION
 
     SERVER_HOST: str = "127.0.0.1"
     SERVER_PORT: int = 8000
@@ -42,27 +50,11 @@ class BackendBaseSettings(BaseSettings):
     IS_DB_FORCE_ROLLBACK: bool = False
     IS_DB_EXPIRE_ON_COMMIT: bool = False
 
-    API_TOKEN: str | None = None
-    AUTH_TOKEN: str | None = None
-    JWT_TOKEN_PREFIX: str = "Bearer"
+    # Signs the self-contained onboarding `state` token (see
+    # `src.api.onboarding_state`); no user-session JWTs exist yet.
     JWT_SECRET_KEY: str = "change-me"
-    JWT_SUBJECT: str = "access"
-    JWT_MIN: int = 60
-    JWT_HOUR: int = 1
-    JWT_DAY: int = 1
+    JWT_ALGORITHM: str = "HS256"
     IS_ALLOWED_CREDENTIALS: bool = True
-
-    @property
-    def DATABASE_URL(self) -> str:
-        return (
-            f"{self.POSTGRES_SCHEMA}://{self.POSTGRES_USERNAME}:"
-            f"{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:"
-            f"{self.POSTGRES_PORT}/{self.POSTGRES_NAME}"
-        )
-
-    @property
-    def JWT_ACCESS_TOKEN_EXPIRATION_TIME(self) -> int:
-        return self.JWT_MIN * self.JWT_HOUR * self.JWT_DAY
 
     ALLOWED_ORIGINS: list[str] = [
         "http://localhost:3000",  # React default port
@@ -78,14 +70,8 @@ class BackendBaseSettings(BaseSettings):
     ALLOWED_HEADERS: list[str] = ["*"]
 
     LOGGING_LEVEL: int = logging.INFO
-    LOGGERS: tuple[str, str] = ("uvicorn.asgi", "uvicorn.access")
     # None -> emit JSON logs unless DEBUG is on. Set explicitly to force a format.
     LOG_JSON: bool | None = None
-
-    HASHING_ALGORITHM_LAYER_1: str = "bcrypt"
-    HASHING_ALGORITHM_LAYER_2: str = "argon2"
-    HASHING_SALT: str = ""
-    JWT_ALGORITHM: str = "HS256"
 
     # Fernet key (urlsafe base64-encoded 32 bytes) used to encrypt Razorpay tokens at rest.
     ENCRYPTION_KEY: str = ""
@@ -108,10 +94,10 @@ class BackendBaseSettings(BaseSettings):
     # instead of being stored with `signature_verified = false`.
     RAZORPAY_WEBHOOK_REJECT_UNVERIFIED: bool = False
     HTTP_CLIENT_TIMEOUT: int = 30
-    # Outbound-HTTP retry budget for transient failures (network drop, 429, 5xx).
     # Cache window for the "is this case already paid?" Razorpay check, so a
     # burst of outreach calls in one agent run makes at most one request.
     SETTLEMENT_CHECK_CACHE_SECONDS: int = 120
+    # Outbound-HTTP retry budget for transient failures (network drop, 429, 5xx).
     HTTP_MAX_RETRY_ATTEMPTS: int = 3
     HTTP_RETRY_BASE_DELAY_SECONDS: float = 0.5
     HTTP_RETRY_MAX_DELAY_SECONDS: float = 8.0
@@ -148,12 +134,8 @@ class BackendBaseSettings(BaseSettings):
     WEBHOOK_DB_WRITE_MAX_RETRIES: int = 3
     # How long a fresh webhook-triggered case waits for the customer to resolve
     # it themselves (e.g. retry a failed payment) before the agent gets involved.
-    # If a resolving event lands within this window, the case is marked
-    # RESOLVED and the delayed agent dispatch becomes a no-op (see
-    # `RecoveryCaseCRUDRepository.claim_for_processing` - RESOLVED is not a
-    # reclaimable status). Kept equal to `WEBHOOK_STUCK_AFTER_SECONDS` so the
-    # reconciler's staleness sweep doesn't treat an intentionally-delayed case
-    # as lost before its grace period is actually up.
+    # Kept equal to `WEBHOOK_STUCK_AFTER_SECONDS` so the reconciler's staleness
+    # sweep doesn't treat an intentionally-delayed case as lost too early.
     RECOVERY_GRACE_PERIOD_SECONDS: int = 900
     # How many merged webhook_event rows the agent gets as history for one case.
     RECOVERY_CASE_HISTORY_LIMIT: int = 50
@@ -165,13 +147,6 @@ class BackendBaseSettings(BaseSettings):
     SCHEDULED_ACTION_SWEEP_INTERVAL_SECONDS: int = 30
     SCHEDULED_ACTION_SWEEP_BATCH_SIZE: int = 100
     SCHEDULED_ACTION_MAX_ATTEMPTS: int = 5
-
-    @property
-    def CELERY_BROKER_URL(self) -> str:
-        if self.CELERY_BROKER_URL_OVERRIDE:
-            return self.CELERY_BROKER_URL_OVERRIDE
-        auth = f":{self.REDIS_PASSWORD}@" if self.REDIS_PASSWORD else ""
-        return f"redis://{auth}{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
 
     # --- LangGraph recovery agent ---
     OPENAI_API_KEY: str | None = None
@@ -187,29 +162,24 @@ class BackendBaseSettings(BaseSettings):
     SIMULATION_API_BASE_URL: str = "http://localhost:8001/api/v1"
     SIMULATION_API_TIMEOUT_SECONDS: int = 10
 
-    # The business dashboard (frontend-demo) - the OAuth callback redirects
-    # here to finish onboarding instead of dead-ending in raw JSON.
+    # The business dashboard (frontend-demo) - the OAuth callback redirects here
+    # to finish onboarding instead of dead-ending in raw JSON.
     FRONTEND_BASE_URL: str = "http://localhost:5173"
 
     # Razorpay MCP server - https://razorpay.com/docs/mcp-server/
     RAZORPAY_MCP_SERVER_URL: str = "https://mcp.razorpay.com/mcp"
     RAZORPAY_MCP_TRANSPORT: str = "streamable_http"
-    # DEMO FALLBACK ONLY: Razorpay's legacy Key ID / Key Secret pair (from the
-    # dashboard), used to authenticate the MCP session when a business has no
-    # OAuth access token yet, so the agent can be exercised end-to-end before
-    # onboarding completes. Never rely on this in production - every business
-    # should authenticate the MCP session with its own onboarded OAuth token.
+    # DEMO FALLBACK ONLY: Razorpay's legacy Key ID / Key Secret pair, used to
+    # authenticate the MCP session when a business has no OAuth access token yet.
+    # Never rely on this in production.
     RAZORPAY_KEY_ID: str | None = None
     RAZORPAY_KEY_SECRET: str | None = None
 
     # --- Drop-off detection ---
-    # Razorpay has no `order.created` (or any drop-off) webhook, so the only
-    # way to notice "customer started checkout, never paid" is to poll
-    # `GET /v1/orders` per business. Businesses are polled one at a time on a
-    # rotation (`Business.next_dropoff_poll_at`), not all at once.
-    # How often the beat schedule checks "which businesses are due".
+    # Razorpay has no drop-off webhook, so "customer started checkout, never
+    # paid" is only discoverable by polling `GET /v1/orders` per business, one
+    # business at a time on a rotation (`Business.next_dropoff_poll_at`).
     DROPOFF_SWEEP_INTERVAL_SECONDS: int = 60
-    # How long a business waits before its next poll turn, once polled.
     DROPOFF_POLL_INTERVAL_SECONDS: int = 900
     DROPOFF_POLL_JITTER_SECONDS: int = 60
     # An order unpaid for at least this long counts as a drop-off.
@@ -217,9 +187,16 @@ class BackendBaseSettings(BaseSettings):
     # The Orders API `from` window - must comfortably exceed
     # POLL_INTERVAL + THRESHOLD so a slow poll cycle never skips an order.
     DROPOFF_LOOKBACK_SECONDS: int = 3600
-    # Safety caps: how many businesses per sweep tick, how many orders per business.
     DROPOFF_POLL_BATCH_SIZE: int = 20
     DROPOFF_MAX_ORDERS_PER_BUSINESS: int = 500
+
+    @property
+    def DATABASE_URL(self) -> str:
+        return (
+            f"{self.POSTGRES_SCHEMA}://{self.POSTGRES_USERNAME}:"
+            f"{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:"
+            f"{self.POSTGRES_PORT}/{self.POSTGRES_NAME}"
+        )
 
     @property
     def CHECKPOINTER_DATABASE_URL(self) -> str:
@@ -230,10 +207,15 @@ class BackendBaseSettings(BaseSettings):
         )
 
     @property
+    def CELERY_BROKER_URL(self) -> str:
+        if self.CELERY_BROKER_URL_OVERRIDE:
+            return self.CELERY_BROKER_URL_OVERRIDE
+        auth = f":{self.REDIS_PASSWORD}@" if self.REDIS_PASSWORD else ""
+        return f"redis://{auth}{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
+
+    @property
     def set_backend_app_attributes(self) -> dict[str, str | bool | None]:
-        """
-        Set all `FastAPI` class' attributes with the custom values defined in `BackendBaseSettings`.
-        """
+        """`FastAPI` constructor kwargs derived from these settings."""
         return {
             "title": self.TITLE,
             "version": self.VERSION,
@@ -244,3 +226,32 @@ class BackendBaseSettings(BaseSettings):
             "redoc_url": self.REDOC_URL,
             "openapi_prefix": self.OPENAPI_PREFIX,
         }
+
+
+class BackendDevSettings(BackendBaseSettings):
+    DESCRIPTION: str | None = "Development Environment."
+    DEBUG: bool = True
+    ENVIRONMENT: Environment = Environment.DEVELOPMENT
+
+
+class BackendStageSettings(BackendBaseSettings):
+    DESCRIPTION: str | None = "Test Environment."
+    DEBUG: bool = True
+    ENVIRONMENT: Environment = Environment.STAGING
+
+
+class BackendProdSettings(BackendBaseSettings):
+    DESCRIPTION: str | None = "Production Environment."
+    ENVIRONMENT: Environment = Environment.PRODUCTION
+
+
+class BackendSettingsFactory:
+    def __init__(self, environment: str) -> None:
+        self.environment = environment
+
+    def __call__(self) -> BackendBaseSettings:
+        if self.environment == Environment.DEVELOPMENT.value:
+            return BackendDevSettings()
+        if self.environment == Environment.STAGING.value:
+            return BackendStageSettings()
+        return BackendProdSettings()
