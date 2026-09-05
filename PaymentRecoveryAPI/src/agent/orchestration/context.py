@@ -23,6 +23,7 @@ from src.agent.orchestration.prompts import (
     render_system_prompt,
 )
 from src.agent.policies.contact_policy import local_time_string
+from src.agent.skills import render_skills_section
 from src.agent.state.recovery import RecoveryAgentState
 from src.agent.utilities.timezone import resolve_timezone
 from src.integrations.razorpay.helpers.normalizer import extract_primary_entity
@@ -41,6 +42,7 @@ MEMORY_KEYS: tuple[str, ...] = (
     "payment_verified",
     "resolution",
     "next_check_after",
+    "loaded_skills",
 )
 
 # Common, non-sensitive fields worth surfacing generically from any entity
@@ -125,6 +127,7 @@ def build_case_context(
         payment_verified=False,
         resolution=None,
         next_check_after=None,
+        loaded_skills=[],
     )
     for key in MEMORY_KEYS:
         value = (prior_memory or {}).get(key)
@@ -170,6 +173,9 @@ def build_system_prompt_context(
         business=business,
         case_context=case_context,
         agent_memory=_format_agent_memory(memory),
+        skills_section=render_skills_section(
+            latest_event_type=case.latest_event_type, loaded=memory.get("loaded_skills") or []
+        ),
         customer_first_message=first_message or "The customer has not replied to us on this case yet.",
         communication_memory=_format_communication_memory(
             _build_communication_memory(actions, limit=comm_limit)

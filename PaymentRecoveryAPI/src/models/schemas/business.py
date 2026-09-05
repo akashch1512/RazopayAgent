@@ -75,12 +75,15 @@ class AgentSettings(BaseSchemaModel):
     @pydantic.field_validator("enabled_channels")
     @classmethod
     def _validate_channels(cls, value: list[str] | None) -> list[str] | None:
+        """Drop unknown channel names rather than rejecting - stored settings
+        may reference a channel that has since been removed (e.g. the retired
+        `send_payment_link`), and a stale value must not 500 the read path.
+        Returns `None` if nothing recognizable remains, so the agent falls back
+        to "all channels allowed" instead of "no outreach at all"."""
         if value is None:
             return None
-        unknown = set(value) - set(AGENT_CHANNELS)
-        if unknown:
-            raise ValueError(f"Unknown channel(s) {sorted(unknown)}; expected one of {AGENT_CHANNELS}")
-        return value
+        known = [channel for channel in value if channel in AGENT_CHANNELS]
+        return known or None
 
 
 class WebhookConfigResponse(pydantic.BaseModel):

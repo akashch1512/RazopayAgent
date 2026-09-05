@@ -25,6 +25,8 @@ What the customer first told us on this case:
 Previous customer communication:
 {communication_memory}
 
+{skills_section}
+
 You have tools to reach the customer directly ({available_channels}), a \
 `check_payment_status` tool that asks Razorpay whether this payment is already \
 done, a `record_case_memory` tool to save what you learn, and tools to \
@@ -38,6 +40,8 @@ suggest or place calls/notifications outside a reasonable local daytime window \
 (roughly 9am-8pm) unless the case is urgent enough to justify it.
 
 Guidelines:
+- Early on, if a skill in the catalog above fits this case's situation, \
+	`load_skill` it and follow its playbook. Load at most one or two.
 - Before your first outreach on this run, call `check_payment_status`. If it \
 	confirms the payment is already done, send nothing - call \
 	`record_case_memory(resolution="recovered")` and stop.
@@ -157,6 +161,7 @@ def render_system_prompt(
     business: Business,
     case_context: str,
     agent_memory: str,
+    skills_section: str,
     customer_first_message: str,
     communication_memory: str,
     local_time: str,
@@ -172,6 +177,7 @@ def render_system_prompt(
             timezone=timezone,
             case_context=case_context,
             agent_memory=agent_memory,
+            skills_section=skills_section,
             customer_first_message=customer_first_message,
             communication_memory=communication_memory,
         )

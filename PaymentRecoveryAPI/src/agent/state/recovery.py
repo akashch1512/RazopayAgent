@@ -40,3 +40,7 @@ class RecoveryAgentState(AgentState):
     resolution: str | None
     # ISO-8601 time the agent wants this case picked up again (dunning cadence).
     next_check_after: str | None
+
+    # Names of skills the agent pulled in via `load_skill`; the context builder
+    # keeps re-injecting their full text so a run always follows the same playbook.
+    loaded_skills: list[str]

@@ -16,7 +16,115 @@ const REPLY_CHANNELS = ["whatsapp", "sms", "call", "email", "app_notification"];
 
 // A real, payable Razorpay test order - so a demo viewer can also run the
 // genuine hosted-checkout flow alongside the simulated one.
-const RAZORPAY_TRY_URL = "https://rzp.io/rzp/icUrEyJv";
+const RAZORPAY_TRY_URL = "https://rzp.io/rzp/cNHCgllt";
+
+// ---------- Notification sound ----------
+
+let _audioCtx = null;
+
+function soundEnabled() {
+  try {
+    return localStorage.getItem("rzp_sound") !== "off";
+  } catch (e) {
+    return true;
+  }
+}
+
+function setSoundEnabled(on) {
+  try {
+    localStorage.setItem("rzp_sound", on ? "on" : "off");
+  } catch (e) {
+    /* storage unavailable - keep default */
+  }
+}
+
+// Browsers only allow audio after a user gesture; call this from click handlers
+// so the first real notification can play.
+function unlockAudio() {
+  try {
+    _audioCtx = _audioCtx || new (window.AudioContext || window["webkitAudioContext"])();
+    if (_audioCtx.state === "suspended") _audioCtx.resume();
+  } catch (e) {
+    /* no Web Audio - notifications are silent */
+  }
+}
+
+// A short two-note chime, synthesized (no asset file needed).
+function playPing() {
+  if (!soundEnabled()) return;
+  try {
+    _audioCtx = _audioCtx || new (window.AudioContext || window["webkitAudioContext"])();
+    const ctx = _audioCtx;
+    if (ctx.state === "suspended") ctx.resume();
+    const now = ctx.currentTime;
+    [880, 1174.7].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      const start = now + i * 0.12;
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.22, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.22);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.24);
+    });
+  } catch (e) {
+    /* audio not available */
+  }
+}
+
+function soundToggleLabel() {
+  return soundEnabled() ? "🔔 Sound on" : "🔕 Muted";
+}
+
+// ---------- Live dashboard refresh ----------
+
+const dashState = { timer: null, sig: null };
+
+function stopDashboardAutoRefresh() {
+  if (dashState.timer) clearInterval(dashState.timer);
+  dashState.timer = null;
+}
+
+function caseSignature(cases) {
+  return (cases || [])
+    .map((c) => `${c.id}:${c.processingStatus}:${c.lastEventAt}`)
+    .sort()
+    .join("|");
+}
+
+async function dashboardTick(businessId) {
+  // Never redraw the page out from under an open overlay, an expanded case, or
+  // someone editing a field.
+  if (document.getElementById("controls-overlay")) return;
+  const active = document.activeElement;
+  if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) return;
+  if (document.querySelector(".case-detail-row:not([hidden])")) return;
+
+  let cases;
+  try {
+    cases = await api(`/recovery-cases/?business_id=${businessId}`);
+  } catch (e) {
+    return;
+  }
+
+  const sig = caseSignature(cases);
+  if (dashState.sig === null || sig === dashState.sig) {
+    dashState.sig = sig;
+    return;
+  }
+  dashState.sig = sig;
+  playPing();
+  renderDashboard();
+}
+
+function startDashboardAutoRefresh(businessId, cases) {
+  stopDashboardAutoRefresh();
+  dashState.sig = caseSignature(cases);
+  dashState.timer = setInterval(() => dashboardTick(businessId), 8000);
+}
 
 function escapeHtml(value) {
   if (value === null || value === undefined) return "";
@@ -192,6 +300,7 @@ function handleOnboardComplete() {
 // ---------- Dashboard ----------
 
 async function renderDashboard(message) {
+  stopDashboardAutoRefresh();
   const businessId = getBusinessId();
   if (!businessId) {
     navigate("/");
@@ -225,6 +334,7 @@ async function renderDashboard(message) {
       <div class="top-bar-actions">
         <button id="controls-btn" class="accent-btn">Controls</button>
         <a class="btn-link" href="${RAZORPAY_TRY_URL}" target="_blank" rel="noopener noreferrer">Try actual Razorpay order</a>
+        <button id="sound-toggle-btn" title="Notification sound">${soundToggleLabel()}</button>
         <button id="logout-btn">Switch business</button>
       </div>
     </div>
@@ -366,7 +476,10 @@ async function renderDashboard(message) {
             }).join("")}
           </div>
         </div>
-        <button type="submit">Save Settings</button>
+        <div class="save-row">
+          <button type="submit">Save Settings</button>
+          <span id="settings-status" class="save-status"></span>
+        </div>
       </form>
     </div>
   `;
@@ -376,7 +489,17 @@ async function renderDashboard(message) {
     navigate("/");
   });
 
-  document.getElementById("controls-btn").addEventListener("click", () => openControlsOverlay(cases));
+  document.getElementById("controls-btn").addEventListener("click", () => {
+    unlockAudio();
+    openControlsOverlay(cases);
+  });
+
+  document.getElementById("sound-toggle-btn").addEventListener("click", (e) => {
+    setSoundEnabled(!soundEnabled());
+    unlockAudio();
+    if (soundEnabled()) playPing();
+    e.target.textContent = soundToggleLabel();
+  });
 
   document.getElementById("settings-form").addEventListener("submit", (e) => saveSettings(e, businessId));
 
@@ -393,6 +516,9 @@ async function renderDashboard(message) {
   document.querySelectorAll(".retry-case-btn").forEach((btn) => {
     btn.addEventListener("click", () => retryCase(btn.dataset.caseId, businessId));
   });
+
+  // Keep the dashboard live - no manual refresh needed.
+  startDashboardAutoRefresh(businessId, cases);
 }
 
 const PROCESSING_STATUSES = ["RECEIVED", "QUEUED", "PROCESSING"];
@@ -444,14 +570,26 @@ async function saveSettings(event, businessId) {
     custom_instructions: document.getElementById("settings-instructions").value || null,
     enabled_channels: channels.length > 0 ? channels : null,
   };
+  const status = document.getElementById("settings-status");
+  const setStatus = (text, ok) => {
+    if (!status) return;
+    status.textContent = text;
+    status.classList.toggle("save-status-error", !ok);
+  };
+  const submitBtn = event.target.querySelector('button[type="submit"]');
+  if (submitBtn) submitBtn.disabled = true;
+  setStatus("Saving...", true);
   try {
     await api(`/businesses/${businessId}/settings`, {
       method: "PUT",
       body: JSON.stringify(payload),
     });
-    showActionMessage("success", "Settings saved.");
+    setStatus("✓ Settings saved", true);
+    setTimeout(() => setStatus("", true), 4000);
   } catch (err) {
-    showActionMessage("error", `Failed to save settings: ${err.message}`);
+    setStatus(`Failed: ${err.message}`, false);
+  } finally {
+    if (submitBtn) submitBtn.disabled = false;
   }
 }
 
@@ -584,7 +722,7 @@ function toggleWebhookHistoryDetail(caseId, idx, event) {
 
 // ---------- Customer Controls overlay ----------
 
-const controlsState = { caseId: null, pollTimer: null, cases: [] };
+const controlsState = { caseId: null, pollTimer: null, cases: [], seenAgentCount: null };
 
 function customerLabel(c) {
   const who = c.customerEmail || c.customerContact || "unknown customer";
@@ -611,9 +749,12 @@ function openControlsOverlay(cases) {
       <div class="overlay-head">
         <div>
           <div class="overlay-title">Customer Controls</div>
-          <div class="hint">Simulate the customer side - see what the agent sent, reply back, or mark a case paid.</div>
+          <div class="hint">Simulate the customer side - see what the agent sent, reply back, or mark a case paid. New messages arrive automatically.</div>
         </div>
-        <button id="controls-close" class="dismiss-btn" aria-label="Close">&times;</button>
+        <div class="overlay-head-actions">
+          <button id="controls-sound" title="Notification sound">${soundToggleLabel()}</button>
+          <button id="controls-close" class="dismiss-btn" aria-label="Close">&times;</button>
+        </div>
       </div>
 
       <div class="overlay-body">
@@ -652,11 +793,20 @@ function openControlsOverlay(cases) {
 
   document.body.appendChild(overlay);
   document.body.classList.add("overlay-open");
+  unlockAudio();
 
   overlay.addEventListener("click", (e) => {
     if (e.target === overlay) closeControlsOverlay();
   });
   document.getElementById("controls-close").addEventListener("click", closeControlsOverlay);
+  document.getElementById("controls-sound").addEventListener("click", (e) => {
+    setSoundEnabled(!soundEnabled());
+    unlockAudio();
+    if (soundEnabled()) playPing();
+    e.target.textContent = soundToggleLabel();
+    const topToggle = document.getElementById("sound-toggle-btn");
+    if (topToggle) topToggle.textContent = soundToggleLabel();
+  });
   document.addEventListener("keydown", onControlsKeydown);
 
   document.getElementById("controls-customer").addEventListener("change", (e) => {
@@ -670,10 +820,30 @@ function onControlsKeydown(e) {
   if (e.key === "Escape") closeControlsOverlay();
 }
 
+let _titleResetTimer = null;
+function flashOverlayTitle() {
+  const box = document.getElementById("controls-conversation");
+  if (box) {
+    box.classList.add("conversation-flash");
+    setTimeout(() => box.classList.remove("conversation-flash"), 1200);
+  }
+  if (document.hidden) {
+    document.title = "● New message - Razopay Agent Demo";
+    clearTimeout(_titleResetTimer);
+    const restore = () => {
+      document.title = "Razopay Agent Demo";
+      document.removeEventListener("visibilitychange", restore);
+    };
+    document.addEventListener("visibilitychange", restore);
+    _titleResetTimer = setTimeout(restore, 10000);
+  }
+}
+
 function closeControlsOverlay() {
   if (controlsState.pollTimer) clearInterval(controlsState.pollTimer);
   controlsState.pollTimer = null;
   controlsState.caseId = null;
+  controlsState.seenAgentCount = null;
   document.removeEventListener("keydown", onControlsKeydown);
   document.body.classList.remove("overlay-open");
   const overlay = document.getElementById("controls-overlay");
@@ -684,6 +854,7 @@ function closeControlsOverlay() {
 
 function selectControlsCase(caseId) {
   controlsState.caseId = caseId || null;
+  controlsState.seenAgentCount = null; // first load of a case never pings
   if (controlsState.pollTimer) clearInterval(controlsState.pollTimer);
   controlsState.pollTimer = null;
 
@@ -724,8 +895,17 @@ async function loadConversation() {
   const comms = (dashboard.recovery_case && dashboard.recovery_case.communications) || [];
   if (comms.length === 0) {
     box.innerHTML = `<p class="muted">No messages yet - the agent hasn't contacted this customer.</p>`;
+    controlsState.seenAgentCount = 0;
     return;
   }
+
+  // Ring the notification when a new agent message appears (not on first load).
+  const agentCount = comms.filter((c) => c.message).length;
+  if (controlsState.seenAgentCount !== null && agentCount > controlsState.seenAgentCount) {
+    playPing();
+    flashOverlayTitle();
+  }
+  controlsState.seenAgentCount = agentCount;
 
   // Store keeps newest first; show oldest first like a chat.
   const ordered = [...comms].reverse();
@@ -757,6 +937,7 @@ async function loadConversation() {
 
 async function sendControlsReply(event) {
   event.preventDefault();
+  unlockAudio();
   const caseId = controlsState.caseId;
   if (!caseId) return;
   const channel = document.getElementById("controls-reply-channel").value;
@@ -815,6 +996,7 @@ function setControlsStatus(text, isError) {
 
 function render() {
   const pathname = window.location.pathname;
+  if (pathname !== "/business") stopDashboardAutoRefresh();
 
   if (pathname === "/business/onboard/complete") {
     handleOnboardComplete();

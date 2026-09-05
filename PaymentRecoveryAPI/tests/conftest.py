@@ -24,7 +24,7 @@ async def initialize_backend_test_application(backend_test_app: fastapi.FastAPI)
 @pytest.fixture(name="async_client")
 async def async_client(initialize_backend_test_application: fastapi.FastAPI) -> httpx.AsyncClient:  # type: ignore
     async with httpx.AsyncClient(
-        app=initialize_backend_test_application,
+        transport=httpx.ASGITransport(app=initialize_backend_test_application),
         base_url="http://testserver",
         headers={"Content-Type": "application/json"},
     ) as client:
