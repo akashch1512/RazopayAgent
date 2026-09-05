@@ -1,5 +1,6 @@
+### OpenAPI - https://razopayagent-production.up.railway.app/docs
+
 # Razorpay Payment Recovery Agent
-# OpenAPI - https://razopayagent-production.up.railway.app/docs
 ## Architecture
 
 The **Razorpay Payment Recovery Agent** is an event-driven, asynchronous AI system that detects payment drop-offs, creates recovery cases, and autonomously takes recovery actions through Razorpay and customer communication tools.
