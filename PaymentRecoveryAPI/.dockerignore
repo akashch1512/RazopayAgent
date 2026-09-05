@@ -5,6 +5,10 @@ __pycache__
 .ruff_cache
 .git
 .env
+.env.*
 *.pyc
 .coverage
 htmlcov
+docker-compose.yml
+start.sh
+tests
