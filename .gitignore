@@ -71,10 +71,13 @@ MANIFEST
 /site
 docs/_build/
 
-# Dotenvs
+# Dotenvs and local secrets
 /.pnp
 .pnp.js
 .env
+.env.*
+!.env.example
+!**/.env.example
 env/
 ENV/
 env.bak/

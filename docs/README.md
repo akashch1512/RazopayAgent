@@ -1,66 +1,46 @@
-# Razorpay Agent API Documentation Portal
+# Razorpay Payment Recovery Agent
 
-A developer API reference and interactive documentation portal styled after [Razorpay's API Reference](https://razorpay.com/docs/api), covering the complete backend API of the **Razorpay Agent Autonomous Payment Recovery System**.
+## Architecture
 
----
+The **Razorpay Payment Recovery Agent** is an event-driven, asynchronous AI system that detects payment drop-offs, creates recovery cases, and autonomously takes recovery actions through Razorpay and customer communication tools.
 
-## 🌟 Features
+### Major Technologies
 
-- **Razorpay Design System:** Faithful reproduction of Razorpay / Mintlify 3-column developer portal aesthetic, including signature Razorpay blue (`#0c6cf2`), deep dark mode (`#0b0c10`), crisp badges, and typography.
-- **Complete Endpoint Coverage:** Every endpoint across Onboarding, Recovery Cases, Webhook Events, and Ingress is documented with parameter constraints, types, and error codes.
-- **Multi-Language Code Generators:** Instant code snippets in **cURL**, **Python (requests)**, **Node.js (fetch)**, and **Go**.
-- **Interactive Playground (Try It):** Test requests directly from your browser against your local backend (`http://localhost:8000`) or custom staging servers with latency timing and response inspection.
-- **Production Webhook Catalog:** Integrated with 36 real webhook event payloads from `./docs/webhooks` covering Payment Failures (Card, UPI, Netbanking, Wallet), Subscriptions (Paused, Halted, Cancelled), Payment Links, and Provider Downtimes.
-- **Instant Search (⌘K):** Keyboard-driven command palette searching endpoints, parameters, and guides.
-- **OpenAPI 3.1 & Swagger UI:** Includes `openapi.json` generated from the live FastAPI schemas and a bundled `swagger.html` viewer.
+* **FastAPI** — Backend APIs and webhook handling
+* **PostgreSQL** — Persistent database and source of truth
+* **SQLAlchemy** — Database interaction
+* **Alembic** — Database migrations
+* **Redis** — Queue/broker for asynchronous processing
+* **Celery** — Background workers and task execution
+* **LangGraph** — Stateful agent workflow and orchestration
+* **LLM** — Reasoning and decision-making
+* **Razorpay OAuth & Webhooks** — Business authorization and payment events
+* **Razorpay MCP Tools** — Payment-related agent actions
+* **Outreach Tools** — Customer calls/messages
+* **Agent State & Memory** — Previous actions, feedback, and case context
 
----
+The architecture is divided into four major stages:
 
-## 📂 Directory Structure
+1. **Business Onboarding**
 
-```
-docs/
-├── index.html               # Main Razorpay-style API Reference Portal (Root)
-├── build_docs.py            # Automated builder script generating docs from OpenAPI & Webhook schemas
-├── README.md                # This guide
-├── api/
-│   ├── index.html           # Nested route entrypoint (/docs/api)
-│   ├── style.css            # Razorpay CSS theme (Dark & Light modes)
-│   ├── app.js               # Reactive playground, code generator & search
-│   ├── openapi.json         # Complete OpenAPI 3.1.0 schema
-│   └── swagger.html         # Standalone Swagger UI viewer
-└── webhooks/                # Subscribed Razorpay Webhook Payload Catalog
-    ├── downtime_webhooks/   # Card issuer, UPI, netbanking, payout outages
-    └── recovery_webhooks/   # Payment, subscription, invoice, dispute failures
-```
+![Business Onboarding Flow](images/image.png)
 
----
+Before the recovery agent can operate for a business, the business authorizes the system through Razorpay OAuth. The system creates the business, securely stores the encrypted authorization token, configures webhooks, collects agent customization, and completes onboarding.
 
-## 🚀 How to View Locally
+2. **Payment Drop-off Detection**
 
-### Option 1: Direct File Access
-You can open `docs/index.html` directly in any web browser (`file:///.../docs/index.html`).
+![Payment Dropoff Detection](images/image2.png)
 
-### Option 2: Python Local Server (Recommended for Live Playground)
-To test the interactive API playground against your local backend:
-```bash
-# In the project root:
-python3 -m http.server 8080 --directory docs
-```
-Then visit: **[http://localhost:8080](http://localhost:8080)**
+Razorpay webhook events are verified and associated with a business. Existing cases are updated while new cases are normalized, prioritized, persisted in PostgreSQL, and pushed to Redis/Celery for asynchronous processing.
 
----
+3. **Agent Worker**
 
-## 🔄 Re-generating Docs
+![Agent Worker Architecture](images/image3.png)
 
-If backend endpoints or Pydantic models in `backend/src` change, re-generate the documentation by running:
-```bash
-# 1. Export fresh openapi.json from the backend
-cd backend
-DEBUG=false uv run python -c "from src.main import app; import json; open('../docs/api/openapi.json', 'w').write(json.dumps(app.openapi(), indent=2))"
+Celery workers process recovery cases using a **LangGraph-based agent**. The agent builds context from the database, state/memory, business policies, and skills, then uses the LLM with Razorpay, outreach, and management tools. The agent continues until the case is recovered, requires further processing, or must be escalated.
 
-# 2. Re-build the HTML pages
-cd ..
-python3 docs/build_docs.py
-```
+4. **Outreach Agent**
 
+![Outreach Agent Architecture](images/image4.png)
+
+Customer outreach is handled asynchronously through dedicated workers. The outreach agent gathers the parent case context, general context, memory, and real-time information, then uses the LLM with voice/messaging tools to communicate with the customer and feed the result back into the recovery workflow.
