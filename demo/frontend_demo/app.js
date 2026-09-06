@@ -610,6 +610,7 @@ function renderQueueBanner(cases) {
 function renderCaseStats(cases) {
   const total = cases.length;
   const handled = cases.filter((c) => HANDLED_STATUSES.includes(c.processingStatus)).length;
+  const resolved = cases.filter((c) => c.processingStatus === "RESOLVED").length;
   const processing = cases.filter((c) => PROCESSING_STATUSES.includes(c.processingStatus)).length;
   const failed = cases.filter((c) => FAILED_STATUSES.includes(c.processingStatus)).length;
 
@@ -624,6 +625,10 @@ function renderCaseStats(cases) {
         <div class="stat-box">
           <div class="stat-value">${handled}</div>
           <div class="stat-label">Handled</div>
+        </div>
+        <div class="stat-box stat-box-resolved">
+          <div class="stat-value">${resolved}</div>
+          <div class="stat-label">Recovery Resolved</div>
         </div>
         <div class="stat-box">
           <div class="stat-value">${processing}</div>
